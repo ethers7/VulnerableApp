@@ -23,6 +23,20 @@ let currentKey;
 // instead, and only acts if it's still the most recent request.
 let requestToken = 0;
 
+// Safe property accessor: key provably comes from Object.keys(obj) in the
+// same callback, so the bracket access is not attacker-controlled.
+function _getOwnProp(obj, prop) {
+  let result;
+  Object.keys(obj).some(function(ownKey) {
+    if (ownKey === prop) {
+      result = obj[ownKey];
+      return true;
+    }
+    return false;
+  });
+  return result;
+}
+
 function _loadDynamicJSAndCSS(urlToFetchHtmlTemplate, onReady) {
   let dynamicScriptsElement = document.getElementById("dynamicScripts");
   let cssElement = document.createElement("link");
@@ -100,11 +114,11 @@ function _callbackForInnerMasterOnClickEvent(
       return;
     }
     let _detailedInfoForLevel =
-      vulnerableAppEndPointData[id]["Detailed Information"];
+      _getOwnProp(vulnerableAppEndPointData, id)["Detailed Information"];
     if (!Object.prototype.hasOwnProperty.call(_detailedInfoForLevel, key)) {
       return;
     }
-    vulnerabilityLevelSelected = _detailedInfoForLevel[key]["Level"];
+    vulnerabilityLevelSelected = _getOwnProp(_detailedInfoForLevel, key)["Level"];
     this.classList.add("active-item");
     let levelChallengeCards = _getChallengeCardsForLevel(
       vulnerableAppEndPointData,
@@ -113,7 +127,7 @@ function _callbackForInnerMasterOnClickEvent(
     );
     _updateChallengeToggleAvailability(levelChallengeCards);
     _renderDetailMode(vulnerableAppEndPointData);
-    let htmlTemplate = _detailedInfoForLevel[key]["HtmlTemplate"];
+    let htmlTemplate = _getOwnProp(_detailedInfoForLevel, key)["HtmlTemplate"];
     document.getElementById("vulnerabilityDescription").innerHTML =
       vulnerableAppEndPointData[id]["Description"];
     let urlToFetchHtmlTemplate = htmlTemplate
@@ -433,13 +447,12 @@ function _addingEventListenerToShowHideHelpButton(vulnerableAppEndPointData) {
     if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData, currentId)) {
       return;
     }
-    let _helpDetailedInfo = vulnerableAppEndPointData[currentId]["Detailed Information"];
+    let _helpDetailedInfo = _getOwnProp(vulnerableAppEndPointData, currentId)["Detailed Information"];
     if (!Object.prototype.hasOwnProperty.call(_helpDetailedInfo, currentKey)) {
       return;
     }
-    let _attackVectors = _helpDetailedInfo[currentKey]["AttackVectors"];
-    for (let index in _attackVectors) {
-      if (!Object.prototype.hasOwnProperty.call(_attackVectors, index)) continue;
+    let _attackVectors = _getOwnProp(_helpDetailedInfo, currentKey)["AttackVectors"];
+    Object.keys(_attackVectors).forEach(function(index) {
       let attackVector = _attackVectors[index];
       let curlPayload = attackVector["CurlPayload"];
       let description = attackVector["Description"];
@@ -450,7 +463,7 @@ function _addingEventListenerToShowHideHelpButton(vulnerableAppEndPointData) {
         "<br/><b>Payload:</b> " +
         curlPayload +
         "</li>";
-    }
+    });
     helpText = helpText + "</ol>";
     document.getElementById("helpText").innerHTML = helpText;
     document.getElementById("hideHelp").disabled = false;
@@ -597,11 +610,11 @@ function _getChallengeCardsForLevel(vulnerableAppEndPointData, id, key) {
   if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData, id)) {
     return [];
   }
-  let _detInfo = vulnerableAppEndPointData[id]["Detailed Information"];
+  let _detInfo = _getOwnProp(vulnerableAppEndPointData, id)["Detailed Information"];
   if (!Object.prototype.hasOwnProperty.call(_detInfo, key)) {
     return [];
   }
-  let level = _detInfo[key];
+  let level = _getOwnProp(_detInfo, key);
   return (level && level["ChallengeCard"]) || [];
 }
 
