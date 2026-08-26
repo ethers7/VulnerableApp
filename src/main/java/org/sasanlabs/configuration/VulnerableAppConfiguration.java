@@ -131,8 +131,13 @@ public class VulnerableAppConfiguration {
             @Value("${spring.datasource.application.password}") String appPassword) {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
         JdbcTemplate adminJdbcTemplate = new JdbcTemplate(adminDataSource);
+        if (appPassword == null || !appPassword.matches("[a-zA-Z0-9!@#$%^&*()_+=\\-]+")) {
+            throw new IllegalArgumentException(
+                    "Application password contains invalid characters");
+        }
+        String sanitizedPassword = appPassword.replace("'", "''");
         adminJdbcTemplate.execute(
-                String.format("CREATE USER application PASSWORD '%s'", appPassword));
+                String.format("CREATE USER application PASSWORD '%s'", sanitizedPassword));
         populator.addScript(new ClassPathResource("scripts/SQLInjection/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/xss/PersistentXSS/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/XXEVulnerability/schema.sql"));
