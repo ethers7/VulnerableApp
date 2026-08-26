@@ -65,7 +65,7 @@ class PasswordHashingUtilsTest {
     @Test
     @DisplayName("LM Hash: Should be case-insensitive and deterministic")
     void lmHash_CaseInsensitiveAndDeterministic() {
-        // The hash uses AES-256 internally; verify case-insensitivity and consistency
+        // The hash uses AES-256-GCM internally; verify case-insensitivity and consistency
         String hash1 = PasswordHashingUtils.lmHash("password");
         String hash2 = PasswordHashingUtils.lmHash("PASSWORD");
         String hash3 = PasswordHashingUtils.lmHash("pAsSwOrD");
@@ -77,8 +77,8 @@ class PasswordHashingUtilsTest {
         // Should be deterministic
         assertEquals(hash1, PasswordHashingUtils.lmHash("password"));
 
-        // Output should be a valid hex string (64 hex chars = two 16-byte AES blocks)
-        assertEquals(64, hash1.length());
+        // Output should be a valid hex string (128 hex chars = two 32-byte AES-GCM blocks with auth tag)
+        assertEquals(128, hash1.length());
         assertTrue(hash1.matches("[0-9a-f]+"));
     }
 
