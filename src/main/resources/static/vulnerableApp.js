@@ -96,10 +96,11 @@ function _callbackForInnerMasterOnClickEvent(
     requestToken += 1;
     const thisRequestToken = requestToken;
     if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData, id)) return;
-    if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData[id]["Detailed Information"], key)) return;
+    const detailedInfoForId = vulnerableAppEndPointData[id]["Detailed Information"];
+    if (!Object.prototype.hasOwnProperty.call(detailedInfoForId, key)) return;
     clearSelectedInnerMaster();
     vulnerabilityLevelSelected =
-      vulnerableAppEndPointData[id]["Detailed Information"][key]["Level"];
+      detailedInfoForId[key]["Level"];
     this.classList.add("active-item");
     let levelChallengeCards = _getChallengeCardsForLevel(
       vulnerableAppEndPointData,
@@ -427,8 +428,9 @@ function _addingEventListenerToShowHideHelpButton(vulnerableAppEndPointData) {
     document.getElementById("showHelp").disabled = true;
     let helpText = "<ol>";
     if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData, currentId)) return;
-    if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData[currentId]["Detailed Information"], currentKey)) return;
-    var _attackVectors = vulnerableAppEndPointData[currentId]["Detailed Information"][currentKey]["AttackVectors"];
+    const detailedInfoForCurrentId = vulnerableAppEndPointData[currentId]["Detailed Information"];
+    if (!Object.prototype.hasOwnProperty.call(detailedInfoForCurrentId, currentKey)) return;
+    var _attackVectors = detailedInfoForCurrentId[currentKey]["AttackVectors"];
     for (let index in _attackVectors) {
       if (!Object.prototype.hasOwnProperty.call(_attackVectors, index)) continue;
       let attackVector = _attackVectors[index];
@@ -586,10 +588,9 @@ function _updateChallengeToggleAvailability(challengeCards) {
 
 function _getChallengeCardsForLevel(vulnerableAppEndPointData, id, key) {
   if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData, id)) return [];
-  if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData[id]["Detailed Information"], key)) return [];
-  let level =
-    vulnerableAppEndPointData[id] &&
-    vulnerableAppEndPointData[id]["Detailed Information"][key];
+  const detailedInfoForId = vulnerableAppEndPointData[id]["Detailed Information"];
+  if (!Object.prototype.hasOwnProperty.call(detailedInfoForId, key)) return [];
+  let level = detailedInfoForId[key];
   return (level && level["ChallengeCard"]) || [];
 }
 
