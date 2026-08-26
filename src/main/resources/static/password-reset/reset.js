@@ -115,7 +115,9 @@ function setResult(data) {
     content && content.message ? content.message : "Request completed.";
   if (content && typeof content === "object") {
     getVisibleDetailKeys(content).forEach(function (key) {
-      appendDetailRow(resultDetails, key, content[key]);
+      if (Object.prototype.hasOwnProperty.call(content, key)) {
+        appendDetailRow(resultDetails, key, content[key]);
+      }
     });
   }
 
