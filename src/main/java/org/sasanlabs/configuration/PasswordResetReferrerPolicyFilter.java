@@ -1,6 +1,7 @@
 package org.sasanlabs.configuration;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -20,6 +21,7 @@ public class PasswordResetReferrerPolicyFilter extends OncePerRequestFilter {
 
     private static final String RESET_PAGE_PATH = "/password-reset/reset.html";
     private static final int REFERRER_LEAK_LEVEL = 7;
+    private static final Pattern LEVEL_PATTERN = Pattern.compile("^[0-9]{1,4}$");
 
     @Override
     protected void doFilterInternal(
@@ -38,7 +40,7 @@ public class PasswordResetReferrerPolicyFilter extends OncePerRequestFilter {
         }
 
         String level = request.getParameter("level");
-        if (level == null) {
+        if (level == null || !LEVEL_PATTERN.matcher(level).matches()) {
             return false;
         }
 
