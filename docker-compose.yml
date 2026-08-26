@@ -2,21 +2,33 @@ version: "3.9"
 services:
     VulnerableApp-base:
       image: sasanlabs/owasp-vulnerableapp:latest
+      read_only: true
+      tmpfs:
+        - /tmp
       networks:
         - app_net
       
     VulnerableApp-jsp:
       image: sasanlabs/owasp-vulnerableapp-jsp:latest
+      read_only: true
+      tmpfs:
+        - /tmp
       networks:
         - app_net
  
     VulnerableApp-php:
       image: sasanlabs/owasp-vulnerableapp-php:latest
+      read_only: true
+      tmpfs:
+        - /tmp
       networks:
         - app_net
 
     ollama:
       image: ollama/ollama:latest
+      read_only: true
+      tmpfs:
+        - /tmp
       ports:
        - "11434:11434"
       volumes:
@@ -34,6 +46,9 @@ services:
 
     ollama-model-init:
       image: ollama/ollama:latest
+      read_only: true
+      tmpfs:
+        - /tmp
       depends_on:
         ollama:
           condition: service_healthy
@@ -56,6 +71,9 @@ services:
 
     llmforge:
       image: sasanlabs/llmforge:latest
+      read_only: true
+      tmpfs:
+        - /tmp
       depends_on:
         ollama:
           condition: service_healthy
@@ -75,6 +93,9 @@ services:
 
     mailpit:
       image: axllent/mailpit:v1.30.1
+      read_only: true
+      tmpfs:
+        - /tmp
       restart: unless-stopped
       expose:
         - "1025"
@@ -101,6 +122,11 @@ services:
         - llmforge
         - mailpit
       image: sasanlabs/owasp-vulnerableapp-facade:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+        - /var/run
+        - /var/cache/nginx
       volumes:
        - ./templates:/etc/nginx/templates
       ports:
