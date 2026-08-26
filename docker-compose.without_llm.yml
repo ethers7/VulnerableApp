@@ -3,18 +3,24 @@ services:
     VulnerableApp-base:
       image: sasanlabs/owasp-vulnerableapp:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
 
     VulnerableApp-jsp:
       image: sasanlabs/owasp-vulnerableapp-jsp:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
 
     VulnerableApp-php:
       image: sasanlabs/owasp-vulnerableapp-php:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /var/run
@@ -22,6 +28,8 @@ services:
     mailpit:
       image: axllent/mailpit:v1.30.1
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
       restart: unless-stopped
@@ -46,6 +54,8 @@ services:
         - mailpit
       image: sasanlabs/owasp-vulnerableapp-facade:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /var/run
