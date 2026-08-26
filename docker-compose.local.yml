@@ -5,6 +5,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       networks:
         - app_net
 
@@ -13,6 +15,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       restart: unless-stopped
       expose:
         - "1025"
@@ -41,6 +45,8 @@ services:
         - /tmp
         - /var/run
         - /var/cache/nginx
+      security_opt:
+        - "no-new-privileges:true"
       volumes:
        - ./templates:/etc/nginx/templates
       ports:
