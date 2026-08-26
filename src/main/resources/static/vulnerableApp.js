@@ -426,12 +426,28 @@ function _addingEventListenerToShowHideHelpButton(vulnerableAppEndPointData) {
   document.getElementById("showHelp").addEventListener("click", function () {
     document.getElementById("showHelp").disabled = true;
     let helpText = "<ol>";
-    let attackVectors = vulnerableAppEndPointData[currentId][
-      "Detailed Information"
-    ][currentKey]["AttackVectors"];
-    for (let index in attackVectors) {
-      if (!Object.prototype.hasOwnProperty.call(attackVectors, index)) continue;
-      let attackVector = attackVectors[index];
+    let endPointEntry = Object.prototype.hasOwnProperty.call(
+      vulnerableAppEndPointData,
+      currentId
+    )
+      ? vulnerableAppEndPointData[String(currentId)]
+      : undefined;
+    let detailedMap =
+      endPointEntry &&
+      Object.prototype.hasOwnProperty.call(endPointEntry, "Detailed Information")
+        ? endPointEntry["Detailed Information"]
+        : undefined;
+    let levelEntry =
+      detailedMap &&
+      Object.prototype.hasOwnProperty.call(detailedMap, currentKey)
+        ? detailedMap[String(currentKey)]
+        : undefined;
+    let attackVectors =
+      levelEntry &&
+      Object.prototype.hasOwnProperty.call(levelEntry, "AttackVectors")
+        ? levelEntry["AttackVectors"]
+        : [];
+    Object.values(attackVectors).forEach(function (attackVector) {
       let curlPayload = attackVector["CurlPayload"];
       let description = attackVector["Description"];
       helpText =
@@ -441,7 +457,7 @@ function _addingEventListenerToShowHideHelpButton(vulnerableAppEndPointData) {
         "<br/><b>Payload:</b> " +
         curlPayload +
         "</li>";
-    }
+    });
     helpText = helpText + "</ol>";
     document.getElementById("helpText").innerHTML = helpText;
     document.getElementById("hideHelp").disabled = false;
@@ -585,10 +601,18 @@ function _updateChallengeToggleAvailability(challengeCards) {
 }
 
 function _getChallengeCardsForLevel(vulnerableAppEndPointData, id, key) {
-  if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData, id)) return [];
-  let detailedInfo = vulnerableAppEndPointData[id]["Detailed Information"];
-  if (!Object.prototype.hasOwnProperty.call(detailedInfo, key)) return [];
-  let level = detailedInfo[key];
+  if (!Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData, String(id)))
+    return [];
+  let entry = vulnerableAppEndPointData[String(id)];
+  if (
+    !entry ||
+    !Object.prototype.hasOwnProperty.call(entry, "Detailed Information")
+  )
+    return [];
+  let detailedInfo = entry["Detailed Information"];
+  if (!Object.prototype.hasOwnProperty.call(detailedInfo, String(key)))
+    return [];
+  let level = detailedInfo[String(key)];
   return (level && level["ChallengeCard"]) || [];
 }
 

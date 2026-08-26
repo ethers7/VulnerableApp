@@ -2,6 +2,7 @@ package org.sasanlabs.configuration;
 
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
+import java.sql.PreparedStatement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -135,9 +136,15 @@ public class VulnerableAppConfiguration {
             throw new IllegalArgumentException(
                     "Application password contains invalid characters");
         }
-        String sanitizedPassword = appPassword.replace("'", "''");
+        // Use PreparedStatement to bind the password parameter safely.
+        // H2 supports parameterized PASSWORD in CREATE USER.
         adminJdbcTemplate.execute(
-                String.format("CREATE USER application PASSWORD '%s'", sanitizedPassword));
+                "CREATE USER IF NOT EXISTS application PASSWORD ?",
+                (PreparedStatement ps) -> {
+                    ps.setString(1, appPassword);
+                    ps.execute();
+                    return null;
+                });
         populator.addScript(new ClassPathResource("scripts/SQLInjection/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/xss/PersistentXSS/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/XXEVulnerability/schema.sql"));

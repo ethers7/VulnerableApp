@@ -114,9 +114,13 @@ function setResult(data) {
   resultMessage.textContent =
     content && content.message ? content.message : "Request completed.";
   if (content && typeof content === "object") {
-    getVisibleDetailKeys(content).forEach(function (key) {
-      if (Object.prototype.hasOwnProperty.call(content, key)) {
-        appendDetailRow(resultDetails, key, content[key]);
+    var safeEntries = Object.entries(content);
+    var visibleKeys = getVisibleDetailKeys(content);
+    safeEntries.forEach(function (pair) {
+      var entryKey = pair[0];
+      var entryValue = pair[1];
+      if (visibleKeys.indexOf(entryKey) !== -1) {
+        appendDetailRow(resultDetails, entryKey, entryValue);
       }
     });
   }
