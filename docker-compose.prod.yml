@@ -4,6 +4,8 @@ services:
   VulnerableApp-base:
     image: sasanlabs/owasp-vulnerableapp:unreleased
     read_only: true
+    security_opt:
+      - no-new-privileges:true
     tmpfs:
       - /tmp
       - /run
@@ -28,6 +30,8 @@ services:
       - VulnerableApp-base
     image: sasanlabs/owasp-vulnerableapp-facade:latest
     read_only: true
+    security_opt:
+      - no-new-privileges:true
     tmpfs:
       - /tmp
       - /run

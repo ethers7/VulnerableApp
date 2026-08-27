@@ -3,6 +3,8 @@ services:
     VulnerableApp-base:
       image: sasanlabs/owasp-vulnerableapp:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /run
@@ -12,6 +14,8 @@ services:
     VulnerableApp-jsp:
       image: sasanlabs/owasp-vulnerableapp-jsp:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /run
@@ -21,6 +25,8 @@ services:
     VulnerableApp-php:
       image: sasanlabs/owasp-vulnerableapp-php:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /run
@@ -30,6 +36,8 @@ services:
     ollama:
       image: ollama/ollama:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /run
@@ -51,6 +59,8 @@ services:
     ollama-model-init:
       image: ollama/ollama:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /run
@@ -77,6 +87,8 @@ services:
     llmforge:
       image: sasanlabs/llmforge:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /run
@@ -100,6 +112,8 @@ services:
     mailpit:
       image: axllent/mailpit:v1.30.1
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /run
@@ -130,6 +144,8 @@ services:
         - mailpit
       image: sasanlabs/owasp-vulnerableapp-facade:latest
       read_only: true
+      security_opt:
+        - no-new-privileges:true
       tmpfs:
         - /tmp
         - /run
