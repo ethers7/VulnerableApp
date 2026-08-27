@@ -4,7 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.util.Arrays;
 import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -149,16 +149,16 @@ public final class PasswordHashingUtils {
             key8[i] = (byte) (key8[i] << 1);
         }
 
-        // Use AES-256-CBC instead of DES for adequate encryption strength
-        MessageDigest sha256 = MessageDigest.getInstance("SHA-256", "BC");
+        // Use AES-256-GCM for authenticated encryption strength
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
         byte[] aesKey = sha256.digest(key8);
-        // Derive a deterministic IV from the key (first 16 bytes of SHA-256 of the key)
-        byte[] ivBytes = Arrays.copyOf(sha256.digest(aesKey), 16);
+        // Derive a deterministic 12-byte nonce from the key (standard GCM nonce length)
+        byte[] nonceBytes = Arrays.copyOf(sha256.digest(aesKey), 12);
         byte[] plaintext = new byte[16];
         byte[] magic = "KGS!@#$%".getBytes(StandardCharsets.US_ASCII);
         System.arraycopy(magic, 0, plaintext, 0, magic.length);
-        Cipher aes = Cipher.getInstance("AES/CBC/NoPadding", "BC");
-        aes.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(aesKey, "AES"), new IvParameterSpec(ivBytes));
+        Cipher aes = Cipher.getInstance("AES/GCM/NoPadding");
+        aes.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(aesKey, "AES"), new GCMParameterSpec(128, nonceBytes));
         return Arrays.copyOf(aes.doFinal(plaintext), 8);
     }
 }
