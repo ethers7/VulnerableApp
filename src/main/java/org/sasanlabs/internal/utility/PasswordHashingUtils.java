@@ -158,7 +158,10 @@ public final class PasswordHashingUtils {
         byte[] magic = "KGS!@#$%".getBytes(StandardCharsets.US_ASCII);
         System.arraycopy(magic, 0, plaintext, 0, magic.length);
         Cipher aes = Cipher.getInstance("AES/GCM/NoPadding");
-        aes.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(aesKey, "AES"), new GCMParameterSpec(128, nonceBytes));
+        aes.init(
+                Cipher.ENCRYPT_MODE,
+                new SecretKeySpec(aesKey, "AES"),
+                new GCMParameterSpec(128, nonceBytes));
         return Arrays.copyOf(aes.doFinal(plaintext), 8);
     }
 }

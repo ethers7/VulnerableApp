@@ -134,11 +134,12 @@ public class VulnerableAppConfiguration {
         JdbcTemplate adminJdbcTemplate = new JdbcTemplate(adminDataSource);
         adminJdbcTemplate.execute(
                 "CREATE USER application PASSWORD ?",
-                (PreparedStatementCallback<Void>) ps -> {
-                    ps.setString(1, appPassword);
-                    ps.execute();
-                    return null;
-                });
+                (PreparedStatementCallback<Void>)
+                        ps -> {
+                            ps.setString(1, appPassword);
+                            ps.execute();
+                            return null;
+                        });
         populator.addScript(new ClassPathResource("scripts/SQLInjection/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/xss/PersistentXSS/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/XXEVulnerability/schema.sql"));
