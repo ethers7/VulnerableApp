@@ -2,21 +2,41 @@ version: "3.9"
 services:
     VulnerableApp-base:
       image: sasanlabs/owasp-vulnerableapp:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       networks:
         - app_net
       
     VulnerableApp-jsp:
       image: sasanlabs/owasp-vulnerableapp-jsp:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       networks:
         - app_net
  
     VulnerableApp-php:
       image: sasanlabs/owasp-vulnerableapp-php:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       networks:
         - app_net
 
     ollama:
       image: ollama/ollama:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       ports:
        - "11434:11434"
       volumes:
@@ -34,6 +54,11 @@ services:
 
     ollama-model-init:
       image: ollama/ollama:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       depends_on:
         ollama:
           condition: service_healthy
@@ -56,6 +81,11 @@ services:
 
     llmforge:
       image: sasanlabs/llmforge:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       depends_on:
         ollama:
           condition: service_healthy
@@ -75,6 +105,11 @@ services:
 
     mailpit:
       image: axllent/mailpit:v1.30.1
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - "no-new-privileges:true"
       restart: unless-stopped
       expose:
         - "1025"
@@ -101,6 +136,13 @@ services:
         - llmforge
         - mailpit
       image: sasanlabs/owasp-vulnerableapp-facade:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+        - /var/run
+        - /var/cache/nginx
+      security_opt:
+        - "no-new-privileges:true"
       volumes:
        - ./templates:/etc/nginx/templates
       ports:
