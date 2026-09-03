@@ -46,12 +46,19 @@ export function getHeadersWithForwardedHost(inputId = "forwardedHostInput") {
   return forwardedHost ? { "X-Forwarded-Host": forwardedHost } : {};
 }
 
+function demoUserCookieAttributes() {
+  // Secure is only appended on HTTPS pages because browsers discard Secure
+  // cookies written from a plaintext origin.
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  return `; path=/; SameSite=Lax${secure}`;
+}
+
 export function setDemoUserCookie(value) {
   if (value) {
-    document.cookie = `demo_user=${value}; path=/; SameSite=Lax`;
+    document.cookie = `demo_user=${value}${demoUserCookieAttributes()}`;
   } else {
-    document.cookie =
-      "demo_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    const expiry = "expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie = `demo_user=; ${expiry}${demoUserCookieAttributes()}`;
   }
 }
 
