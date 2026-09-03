@@ -15,18 +15,18 @@ function appendResponseCallback(data) {
     let tableInformation = '<table id="InfoTable">';
     let content = JSON.parse(data.content);
     if (content.length > 0) {
-      for (let key in content[0]) {
+      for (const key of Object.keys(content[0])) {
         tableInformation =
           tableInformation + '<th id="InfoColumn">' + key + "</th>";
       }
     }
-    for (let index in content) {
+    for (const [, row] of Object.entries(content)) {
       tableInformation = tableInformation + '<tr id="Info">';
-      for (let key in content[index]) {
+      for (const [, cellValue] of Object.entries(row)) {
         tableInformation =
           tableInformation +
           '<td id="InfoColumn">' +
-          content[index][key] +
+          cellValue +
           "</td>";
       }
       tableInformation = tableInformation + "</tr>";

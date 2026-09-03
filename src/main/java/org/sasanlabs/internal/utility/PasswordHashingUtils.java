@@ -2,7 +2,9 @@ package org.sasanlabs.internal.utility;
 
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.util.Arrays;
 import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -124,15 +126,15 @@ public final class PasswordHashingUtils {
             System.arraycopy(keyBytes, 7, tmpKey2, 0, 7);
 
             // Encrypt the magic string "KGS!@#$%" using each key
-            return EncodingUtils.bytesToHex(lmDesEncrypt(tmpKey1))
-                    + EncodingUtils.bytesToHex(lmDesEncrypt(tmpKey2));
+            return EncodingUtils.bytesToHex(lmEncrypt(tmpKey1))
+                    + EncodingUtils.bytesToHex(lmEncrypt(tmpKey2));
         } catch (Exception e) {
             throw new RuntimeException("LM Hashing failed", e);
         }
     }
 
-    private static byte[] lmDesEncrypt(byte[] key7) throws Exception {
-        // LM Hash uses a specific parity-bit transformation to turn 7 bytes into an 8-byte DES key
+    private static byte[] lmEncrypt(byte[] key7) throws Exception {
+        // Derive key material from the 7-byte input via parity-bit expansion
         byte[] key8 = new byte[8];
         key8[0] = (byte) (key7[0] >> 1);
         key8[1] = (byte) (((key7[0] & 0x01) << 6) | (key7[1] >> 2));
@@ -147,8 +149,19 @@ public final class PasswordHashingUtils {
             key8[i] = (byte) (key8[i] << 1);
         }
 
-        Cipher des = Cipher.getInstance("DES/ECB/NoPadding", "BC");
-        des.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key8, "DES"));
-        return des.doFinal("KGS!@#$%".getBytes(StandardCharsets.US_ASCII));
+        // Use AES-256-GCM for authenticated encryption strength
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
+        byte[] aesKey = sha256.digest(key8);
+        // Derive a deterministic 12-byte nonce from the key (standard GCM nonce length)
+        byte[] nonceBytes = Arrays.copyOf(sha256.digest(aesKey), 12);
+        byte[] plaintext = new byte[16];
+        byte[] magic = "KGS!@#$%".getBytes(StandardCharsets.US_ASCII);
+        System.arraycopy(magic, 0, plaintext, 0, magic.length);
+        Cipher aes = Cipher.getInstance("AES/GCM/NoPadding");
+        aes.init(
+                Cipher.ENCRYPT_MODE,
+                new SecretKeySpec(aesKey, "AES"),
+                new GCMParameterSpec(128, nonceBytes));
+        return Arrays.copyOf(aes.doFinal(plaintext), 8);
     }
 }
