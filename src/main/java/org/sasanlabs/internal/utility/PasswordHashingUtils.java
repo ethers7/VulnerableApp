@@ -72,7 +72,10 @@ public final class PasswordHashingUtils {
         String[] saltAndHash = saltedSha256Hash.split(HASH_SEPARATOR, 2);
         if (saltAndHash.length != 2) {
             // Backward compatibility for old plaintext test data.
-            return saltedSha256Hash.equals(rawPassword);
+            // Constant time comparison, the compared values are secrets.
+            return MessageDigest.isEqual(
+                    saltedSha256Hash.getBytes(StandardCharsets.UTF_8),
+                    rawPassword.getBytes(StandardCharsets.UTF_8));
         }
 
         String calculatedHash = sha256Hex(saltAndHash[0], rawPassword);

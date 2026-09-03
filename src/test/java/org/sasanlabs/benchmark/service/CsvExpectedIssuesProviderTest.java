@@ -171,6 +171,24 @@ class CsvExpectedIssuesProviderTest {
                         org.assertj.core.groups.Tuple.tuple("CWE-79", 42));
     }
 
+    /** A relative override must not walk out of the working directory of the process. */
+    @Test
+    void relativePathEscapingTheWorkingDirectory_throwsIOException() {
+        assertThatThrownBy(
+                        () -> new CsvExpectedIssuesProvider("../../etc/passwd").getExpectedIssues())
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("benchmark.sast.ground-truth.path");
+    }
+
+    @Test
+    void relativePathInsideTheWorkingDirectory_isStillRead() throws Exception {
+        List<ExpectedIssue> issues =
+                new CsvExpectedIssuesProvider("src/main/resources/scanner/sast/expectedIssues.csv")
+                        .getExpectedIssues();
+
+        assertThat(issues).isNotEmpty();
+    }
+
     @Test
     void missingClasspathResource_throwsIOException() {
         assertThatThrownBy(

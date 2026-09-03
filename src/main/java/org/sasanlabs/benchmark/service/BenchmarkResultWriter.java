@@ -34,11 +34,23 @@ public class BenchmarkResultWriter {
         return write(result, defaultBenchmarksDir);
     }
 
+    /** Writes the report into {@code benchmarksDir}, which the file name may not escape. */
     public Path write(BenchmarkResult result, String benchmarksDir) throws IOException {
-        Path dir = Paths.get(benchmarksDir);
+        // The directory itself is deployment configuration (benchmark.output.dir), so absolute
+        // locations stay supported. The report path derived from the tool name is canonicalised
+        // and has to stay inside that directory, so a tool name can never steer the write out.
+        Path dir = Paths.get(benchmarksDir).normalize();
         Files.createDirectories(dir);
         String fileName = sanitizeToolName(result.getTool()) + "-results.json";
-        Path target = dir.resolve(fileName);
+        Path target = dir.resolve(fileName).normalize();
+        if (!isContainedIn(target, dir)) {
+            throw new IOException(
+                    "Refusing to write the benchmark result to '"
+                            + target
+                            + "': it resolves outside of the configured directory '"
+                            + dir
+                            + "'.");
+        }
         Path temp = Files.createTempFile(dir, fileName + ".", ".tmp");
         try {
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(temp.toFile(), result);
@@ -48,6 +60,10 @@ public class BenchmarkResultWriter {
             throw ioe;
         }
         return target;
+    }
+
+    private static boolean isContainedIn(Path target, Path dir) {
+        return target.toAbsolutePath().normalize().startsWith(dir.toAbsolutePath().normalize());
     }
 
     private static void moveAtomicallyOrReplace(Path source, Path target) throws IOException {

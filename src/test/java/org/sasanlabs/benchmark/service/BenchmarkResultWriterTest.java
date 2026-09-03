@@ -87,6 +87,20 @@ class BenchmarkResultWriterTest {
         assertThat(target.getFileName().toString()).isEqualTo("burpsuite214-results.json");
     }
 
+    /** A traversal sequence in the tool name must still land inside the configured directory. */
+    @Test
+    void write_toolNameWithTraversalSequence_staysInsideConfiguredDir(@TempDir Path tempDir)
+            throws Exception {
+        Path outputDir = tempDir.resolve("out");
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, outputDir.toString());
+
+        Path target = writer.write(sampleResult("../../etc/passwd"));
+
+        assertThat(target).isEqualTo(outputDir.resolve("etcpasswd-results.json"));
+        assertThat(target.getParent()).isEqualTo(outputDir);
+        assertThat(Files.exists(target)).isTrue();
+    }
+
     @Test
     void sanitizeToolName_handlesNullEmptyAndAllSymbols() {
         assertThat(BenchmarkResultWriter.sanitizeToolName(null)).isEqualTo("unknown");
