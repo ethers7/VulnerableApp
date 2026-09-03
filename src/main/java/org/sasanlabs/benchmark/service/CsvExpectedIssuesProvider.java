@@ -103,7 +103,30 @@ public class CsvExpectedIssuesProvider implements IExpectedIssuesProvider {
         if (csvPath.startsWith(CLASSPATH_PREFIX)) {
             return parseFromResource(csvPath.substring(CLASSPATH_PREFIX.length()));
         }
-        return parseFromPath(Paths.get(csvPath));
+        return parseFromPath(resolveFilesystemPath(csvPath));
+    }
+
+    /** Canonicalises a filesystem ground truth location and confines relative overrides. */
+    private static Path resolveFilesystemPath(String location) throws IOException {
+        // The property is deployment configuration rather than request input, so an absolute path
+        // stays supported as documented; a relative override is canonicalised and confined to the
+        // working directory, so a value such as "../../etc/passwd" cannot escape the deployment.
+        Path candidate = Paths.get(location);
+        if (candidate.isAbsolute()) {
+            return candidate.normalize();
+        }
+        Path workingDirectory = Paths.get("").toAbsolutePath().normalize();
+        Path resolved = workingDirectory.resolve(candidate).normalize();
+        if (!resolved.startsWith(workingDirectory)) {
+            throw new IOException(
+                    "Refusing to read the SAST ground truth from '"
+                            + location
+                            + "': a relative benchmark.sast.ground-truth.path must stay inside the"
+                            + " working directory "
+                            + workingDirectory
+                            + ".");
+        }
+        return resolved;
     }
 
     private List<ExpectedIssue> parseFromResource(String location) throws IOException {
