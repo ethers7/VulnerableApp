@@ -5,6 +5,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
 
@@ -13,6 +15,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
 
@@ -21,6 +25,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
 
@@ -29,6 +35,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
       ports:
        - "11434:11434"
       volumes:
@@ -52,6 +60,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
       environment:
        - OLLAMA_HOST=http://ollama:11434
        - OLLAMA_MODEL=${OLLAMA_MODEL:-phi3:mini}
@@ -79,6 +89,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
       ports:
        - "8000:8000"
       environment:
@@ -97,6 +109,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
       expose:
         - "1025"
       ports:
@@ -127,6 +141,8 @@ services:
         - /tmp
         - /var/cache/nginx
         - /var/run
+      security_opt:
+        - no-new-privileges:true
       volumes:
        - ./templates:/etc/nginx/templates
       ports:
