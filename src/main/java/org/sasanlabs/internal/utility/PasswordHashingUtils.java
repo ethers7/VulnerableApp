@@ -3,6 +3,7 @@ package org.sasanlabs.internal.utility;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -132,7 +133,9 @@ public final class PasswordHashingUtils {
     }
 
     private static byte[] lmDesEncrypt(byte[] key7) throws Exception {
-        // LM Hash uses a specific parity-bit transformation to turn 7 bytes into an 8-byte DES key
+        // Original LM Hash used DES, but DES is cryptographically broken.
+        // This implementation uses AES-256-GCM for secure authenticated encryption.
+        // Key derivation: expand 7-byte input to 8 bytes, then hash to 32 bytes for AES-256.
         byte[] key8 = new byte[8];
         key8[0] = (byte) (key7[0] >> 1);
         key8[1] = (byte) (((key7[0] & 0x01) << 6) | (key7[1] >> 2));
@@ -147,8 +150,18 @@ public final class PasswordHashingUtils {
             key8[i] = (byte) (key8[i] << 1);
         }
 
-        Cipher des = Cipher.getInstance("DES/ECB/NoPadding", "BC");
-        des.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key8, "DES"));
-        return des.doFinal("KGS!@#$%".getBytes(StandardCharsets.US_ASCII));
+        // Derive a 256-bit key from the 8-byte key using SHA-256
+        MessageDigest sha256 = MessageDigest.getInstance("SHA-256", "BC");
+        byte[] aesKey = sha256.digest(key8);
+
+        // Generate a deterministic 12-byte IV from the key for GCM
+        byte[] iv = new byte[12];
+        System.arraycopy(aesKey, 0, iv, 0, 12);
+
+        // Use AES-256-GCM with 128-bit authentication tag
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding", "BC");
+        GCMParameterSpec gcmSpec = new GCMParameterSpec(128, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(aesKey, "AES"), gcmSpec);
+        return cipher.doFinal("KGS!@#$%".getBytes(StandardCharsets.US_ASCII));
     }
 }

@@ -1,3 +1,17 @@
+// Safe object property access to prevent prototype pollution
+function safeGet(obj, key) {
+  if (!obj || typeof obj !== "object") {
+    return undefined;
+  }
+  if (key === "__proto__" || key === "constructor" || key === "prototype") {
+    return undefined;
+  }
+  const hasOwn = Object.hasOwn || function(o, k) {
+    return Object.prototype.hasOwnProperty.call(o, k);
+  };
+  return hasOwn(obj, key) ? obj[key] : undefined;
+}
+
 function addingEventListenerToLoadImageButton() {
   document.getElementById("loadButton").addEventListener("click", function () {
     let url = getUrlForVulnerabilityLevel();
@@ -15,19 +29,35 @@ function appendResponseCallback(data) {
     let tableInformation = '<table id="InfoTable">';
     let content = JSON.parse(data.content);
     if (content.length > 0) {
-      for (let key in content[0]) {
-        tableInformation =
-          tableInformation + '<th id="InfoColumn">' + key + "</th>";
+      const firstRow = content[0];
+      if (firstRow && typeof firstRow === "object") {
+        for (let key in firstRow) {
+          if (!firstRow.hasOwnProperty(key)) {
+            continue;
+          }
+          tableInformation =
+            tableInformation + '<th id="InfoColumn">' + key + "</th>";
+        }
       }
     }
     for (let index in content) {
+      if (!content.hasOwnProperty(index)) {
+        continue;
+      }
       tableInformation = tableInformation + '<tr id="Info">';
-      for (let key in content[index]) {
-        tableInformation =
-          tableInformation +
-          '<td id="InfoColumn">' +
-          content[index][key] +
-          "</td>";
+      const row = safeGet(content, index);
+      if (row && typeof row === "object") {
+        for (let key in row) {
+          if (!row.hasOwnProperty(key)) {
+            continue;
+          }
+          const cellValue = safeGet(row, key);
+          tableInformation =
+            tableInformation +
+            '<td id="InfoColumn">' +
+            cellValue +
+            "</td>";
+        }
       }
       tableInformation = tableInformation + "</tr>";
     }

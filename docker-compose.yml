@@ -2,21 +2,41 @@ version: "3.9"
 services:
     VulnerableApp-base:
       image: sasanlabs/owasp-vulnerableapp:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
-      
+
     VulnerableApp-jsp:
       image: sasanlabs/owasp-vulnerableapp-jsp:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
- 
+
     VulnerableApp-php:
       image: sasanlabs/owasp-vulnerableapp-php:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
 
     ollama:
       image: ollama/ollama:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - no-new-privileges:true
       ports:
        - "11434:11434"
       volumes:
@@ -37,6 +57,11 @@ services:
       depends_on:
         ollama:
           condition: service_healthy
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - no-new-privileges:true
       environment:
        - OLLAMA_HOST=http://ollama:11434
        - OLLAMA_MODEL=${OLLAMA_MODEL:-phi3:mini}
@@ -61,6 +86,11 @@ services:
           condition: service_healthy
         ollama-model-init:
           condition: service_completed_successfully
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - no-new-privileges:true
       ports:
        - "8000:8000"
       environment:
@@ -76,6 +106,11 @@ services:
     mailpit:
       image: axllent/mailpit:v1.30.1
       restart: unless-stopped
+      read_only: true
+      tmpfs:
+        - /tmp
+      security_opt:
+        - no-new-privileges:true
       expose:
         - "1025"
       ports:
@@ -101,6 +136,13 @@ services:
         - llmforge
         - mailpit
       image: sasanlabs/owasp-vulnerableapp-facade:latest
+      read_only: true
+      tmpfs:
+        - /tmp
+        - /var/cache/nginx
+        - /var/run
+      security_opt:
+        - no-new-privileges:true
       volumes:
        - ./templates:/etc/nginx/templates
       ports:

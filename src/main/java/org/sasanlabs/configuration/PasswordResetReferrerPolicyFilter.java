@@ -20,6 +20,8 @@ public class PasswordResetReferrerPolicyFilter extends OncePerRequestFilter {
 
     private static final String RESET_PAGE_PATH = "/password-reset/reset.html";
     private static final int REFERRER_LEAK_LEVEL = 7;
+    private static final int MIN_LEVEL = 1;
+    private static final int MAX_LEVEL = 10;
 
     @Override
     protected void doFilterInternal(
@@ -43,7 +45,12 @@ public class PasswordResetReferrerPolicyFilter extends OncePerRequestFilter {
         }
 
         try {
-            return Integer.parseInt(level) == REFERRER_LEAK_LEVEL;
+            int levelValue = Integer.parseInt(level);
+            // Validate level is within expected bounds
+            if (levelValue < MIN_LEVEL || levelValue > MAX_LEVEL) {
+                return false;
+            }
+            return levelValue == REFERRER_LEAK_LEVEL;
         } catch (NumberFormatException exception) {
             return false;
         }
