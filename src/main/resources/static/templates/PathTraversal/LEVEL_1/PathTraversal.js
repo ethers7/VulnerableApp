@@ -20,17 +20,17 @@ function appendResponseCallback(data) {
           tableInformation + '<th id="InfoColumn">' + key + "</th>";
       }
     }
-    for (let index in content) {
+    content.forEach(function(row) {
       tableInformation = tableInformation + '<tr id="Info">';
-      for (let key in content[index]) {
+      Object.keys(row).forEach(function(key) {
         tableInformation =
           tableInformation +
           '<td id="InfoColumn">' +
-          content[index][key] +
+          row[key] +
           "</td>";
-      }
+      });
       tableInformation = tableInformation + "</tr>";
-    }
+    });
     tableInformation = tableInformation + "</table>";
     document.getElementById("Information").innerHTML = tableInformation;
   } else {
