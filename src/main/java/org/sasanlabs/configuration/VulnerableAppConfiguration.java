@@ -2,6 +2,7 @@ package org.sasanlabs.configuration;
 
 import com.zaxxer.hikari.HikariDataSource;
 import java.io.IOException;
+import java.sql.PreparedStatement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -131,8 +132,19 @@ public class VulnerableAppConfiguration {
             @Value("${spring.datasource.application.password}") String appPassword) {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
         JdbcTemplate adminJdbcTemplate = new JdbcTemplate(adminDataSource);
+        if (appPassword == null || !appPassword.matches("[a-zA-Z0-9!@#$%^&*()_+=\\-]+")) {
+            throw new IllegalArgumentException(
+                    "Application password contains invalid characters");
+        }
+        // Use PreparedStatement to bind the password parameter safely.
+        // H2 supports parameterized PASSWORD in CREATE USER.
         adminJdbcTemplate.execute(
-                String.format("CREATE USER application PASSWORD '%s'", appPassword));
+                "CREATE USER IF NOT EXISTS application PASSWORD ?",
+                (PreparedStatement ps) -> {
+                    ps.setString(1, appPassword);
+                    ps.execute();
+                    return null;
+                });
         populator.addScript(new ClassPathResource("scripts/SQLInjection/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/xss/PersistentXSS/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/XXEVulnerability/schema.sql"));

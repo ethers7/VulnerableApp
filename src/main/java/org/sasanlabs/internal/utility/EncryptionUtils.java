@@ -1,6 +1,8 @@
 package org.sasanlabs.internal.utility;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -12,6 +14,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.sasanlabs.internal.utility.exception.EncryptionException;
@@ -82,22 +85,66 @@ public class EncryptionUtils {
         }
     }
 
+    private static final int GCM_IV_LENGTH_BYTES = 12;
+    private static final int GCM_TAG_LENGTH_BITS = 128;
+
     public static String encrypt(String plaintext, SecretKey key) throws EncryptionException {
         try {
-            // VULNERABILITY NOTE: ECB mode does not use an IV and reveals patterns (CWE-327)
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, key);
+            byte[] iv = new byte[GCM_IV_LENGTH_BYTES];
+            new SecureRandom().nextBytes(iv);
+
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, key, gcmSpec);
 
             byte[] encrypted = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
-            return java.util.Base64.getEncoder().encodeToString(encrypted);
+
+            // Prepend IV to ciphertext for use during decryption
+            byte[] combined = ByteBuffer.allocate(iv.length + encrypted.length)
+                    .put(iv)
+                    .put(encrypted)
+                    .array();
+
+            return java.util.Base64.getEncoder().encodeToString(combined);
 
         } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
-            throw new EncryptionException("AES configuration not found ", e);
+            throw new EncryptionException("AES/GCM configuration not found", e);
         } catch (InvalidKeyException e) {
             throw new EncryptionException("The provided key is invalid for AES encryption", e);
+        } catch (InvalidAlgorithmParameterException e) {
+            throw new EncryptionException("Invalid GCM parameters", e);
         } catch (IllegalBlockSizeException | BadPaddingException e) {
             throw new EncryptionException(
-                    "AES encryption failed due to block size or padding issues", e);
+                    "AES/GCM encryption failed due to block size or padding issues", e);
+        }
+    }
+
+    public static String decrypt(String ciphertext, SecretKey key) throws EncryptionException {
+        try {
+            byte[] combined = java.util.Base64.getDecoder().decode(ciphertext);
+
+            ByteBuffer buffer = ByteBuffer.wrap(combined);
+            byte[] iv = new byte[GCM_IV_LENGTH_BYTES];
+            buffer.get(iv);
+            byte[] encrypted = new byte[buffer.remaining()];
+            buffer.get(encrypted);
+
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv);
+            cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec);
+
+            byte[] decrypted = cipher.doFinal(encrypted);
+            return new String(decrypted, StandardCharsets.UTF_8);
+
+        } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
+            throw new EncryptionException("AES/GCM configuration not found", e);
+        } catch (InvalidKeyException e) {
+            throw new EncryptionException("The provided key is invalid for AES decryption", e);
+        } catch (InvalidAlgorithmParameterException e) {
+            throw new EncryptionException("Invalid GCM parameters", e);
+        } catch (IllegalBlockSizeException | BadPaddingException e) {
+            throw new EncryptionException(
+                    "AES/GCM decryption failed due to block size or padding issues", e);
         }
     }
 }

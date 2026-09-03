@@ -17,33 +17,33 @@ jobs:
       BASE_IMAGE: sasanlabs/owasp-vulnerableapp-base
     steps:
       - name: Checkout new changes
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           fetch-depth: 0
 
       - name: Login to DockerHub
-        uses: docker/login-action@v3
+        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@988b5a0280414f521da01fcc63a27aeeb4b104db # v3
 
       - name: Setup GitVersion action
-        uses: gittools/actions/gitversion/setup@v0.9.7
+        uses: gittools/actions/gitversion/setup@62f943a7b7e1981bb87a8314f304524657551786 # v0.9.7
         with:
           versionSpec: '5.x'
 
       - name: Execute GitVersion action
         id: gitversion
-        uses: gittools/actions/gitversion/execute@v0.9.7
+        uses: gittools/actions/gitversion/execute@62f943a7b7e1981bb87a8314f304524657551786 # v0.9.7
 
       - name: Create tag for GitHub
-        uses: tvdias/github-tagger@v0.0.1
+        uses: tvdias/github-tagger@a570476cc87352c1655c606b29590df6014535e0 # v0.0.1
         with:
           repo-token: "${{ secrets.GITHUB_TOKEN }}"
           tag: '${{ steps.gitversion.outputs.semver }}'
@@ -52,7 +52,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and push base image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: ./Dockerfile.base
