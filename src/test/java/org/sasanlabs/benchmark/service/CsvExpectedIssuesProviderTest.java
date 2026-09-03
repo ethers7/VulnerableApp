@@ -175,9 +175,7 @@ class CsvExpectedIssuesProviderTest {
     @Test
     void relativePathEscapingTheWorkingDirectory_throwsIOException() {
         assertThatThrownBy(
-                        () ->
-                                new CsvExpectedIssuesProvider("../../etc/passwd")
-                                        .getExpectedIssues())
+                        () -> new CsvExpectedIssuesProvider("../../etc/passwd").getExpectedIssues())
                 .isInstanceOf(IOException.class)
                 .hasMessageContaining("benchmark.sast.ground-truth.path");
     }
