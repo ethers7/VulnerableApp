@@ -1,3 +1,17 @@
+// Safe object property access to prevent prototype pollution
+function safeGet(obj, key) {
+  if (!obj || typeof obj !== "object") {
+    return undefined;
+  }
+  if (key === "__proto__" || key === "constructor" || key === "prototype") {
+    return undefined;
+  }
+  const hasOwn = Object.hasOwn || function(o, k) {
+    return Object.prototype.hasOwnProperty.call(o, k);
+  };
+  return hasOwn(obj, key) ? obj[key] : undefined;
+}
+
 function getQueryParam(name) {
   var params = new URLSearchParams(window.location.search);
   return params.get(name);
@@ -115,7 +129,8 @@ function setResult(data) {
     content && content.message ? content.message : "Request completed.";
   if (content && typeof content === "object") {
     getVisibleDetailKeys(content).forEach(function (key) {
-      appendDetailRow(resultDetails, key, content[key]);
+      const value = safeGet(content, key);
+      appendDetailRow(resultDetails, key, value);
     });
   }
 
