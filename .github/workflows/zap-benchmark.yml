@@ -27,14 +27,17 @@ jobs:
     steps:
       - name: Set matrix
         id: set-matrix
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCAN_TYPE_INPUT: ${{ github.event.inputs.scan_type || 'both' }}
         run: |
           python3 - << 'PYEOF'
           import json, os
 
-          if "${{ github.event_name }}" == "schedule":
+          if os.environ.get("EVENT_NAME") == "schedule":
               scan_type = "both"
           else:
-              scan_type = "${{ github.event.inputs.scan_type || 'both' }}"
+              scan_type = os.environ.get("SCAN_TYPE_INPUT") or "both"
 
           legacy = {
               "name": "legacy",
@@ -238,6 +241,7 @@ jobs:
       - name: Commit benchmark results
         env:
           TOKEN: ${{ secrets.GH_TRAFFIC_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
           set -e
 
@@ -255,7 +259,7 @@ jobs:
 
           for i in {1..5}; do
             echo "Push attempt $i..."
-            if git pull --rebase origin "${{ github.ref_name }}" && git push "https://preetkaran20:${TOKEN}@github.com/SasanLabs/VulnerableApp.git" HEAD:master; then
+            if git pull --rebase origin "$REF_NAME" && git push "https://preetkaran20:${TOKEN}@github.com/SasanLabs/VulnerableApp.git" HEAD:master; then
               success=true
               break
             fi
