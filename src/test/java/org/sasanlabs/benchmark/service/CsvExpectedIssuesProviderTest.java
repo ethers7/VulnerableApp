@@ -159,6 +159,16 @@ class CsvExpectedIssuesProviderTest {
     }
 
     @Test
+    void relativePathEscapingTheWorkingDirectory_throwsIOException() {
+        CsvExpectedIssuesProvider provider =
+                new CsvExpectedIssuesProvider("../escapedExpectedIssues.csv");
+
+        assertThatThrownBy(provider::getExpectedIssues)
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining("benchmark.sast.ground-truth.path");
+    }
+
+    @Test
     void classpathPrefix_readsFromTheClasspath() throws Exception {
         List<ExpectedIssue> issues =
                 new CsvExpectedIssuesProvider("classpath:scanner/sast/test-expectedIssues.csv")

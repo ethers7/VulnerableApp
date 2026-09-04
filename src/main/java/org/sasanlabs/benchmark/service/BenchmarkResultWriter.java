@@ -5,10 +5,11 @@ import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Locale;
+import java.util.Optional;
 import org.sasanlabs.benchmark.model.BenchmarkResult;
+import org.sasanlabs.internal.utility.PathContainmentValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -35,10 +36,26 @@ public class BenchmarkResultWriter {
     }
 
     public Path write(BenchmarkResult result, String benchmarksDir) throws IOException {
-        Path dir = Paths.get(benchmarksDir);
+        // A relative output directory, like the "benchmarks" default, is anchored to the working
+        // directory and may not climb out of it, so the configured value cannot turn into a write
+        // to an arbitrary location on disk.
+        Optional<Path> configuredOutputDir =
+                PathContainmentValidator.resolveConfiguredLocation(benchmarksDir);
+        if (configuredOutputDir.isEmpty()) {
+            throw new IOException(
+                    "The benchmark output directory must stay inside the working directory: "
+                            + benchmarksDir);
+        }
+        Path dir = configuredOutputDir.get();
         Files.createDirectories(dir);
         String fileName = sanitizeToolName(result.getTool()) + "-results.json";
-        Path target = dir.resolve(fileName);
+        // The file name is derived from the tool name of the request, hence the result file is
+        // required to be an entry of the output directory itself.
+        Optional<Path> resultFile = PathContainmentValidator.resolveWithin(dir, fileName);
+        if (resultFile.isEmpty()) {
+            throw new IOException("Refusing to write the benchmark result outside of " + dir);
+        }
+        Path target = resultFile.get();
         Path temp = Files.createTempFile(dir, fileName + ".", ".tmp");
         try {
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(temp.toFile(), result);

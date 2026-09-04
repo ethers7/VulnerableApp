@@ -7,10 +7,10 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import javax.annotation.PostConstruct;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -18,6 +18,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sasanlabs.benchmark.model.ExpectedIssue;
+import org.sasanlabs.internal.utility.PathContainmentValidator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -103,7 +104,17 @@ public class CsvExpectedIssuesProvider implements IExpectedIssuesProvider {
         if (csvPath.startsWith(CLASSPATH_PREFIX)) {
             return parseFromResource(csvPath.substring(CLASSPATH_PREFIX.length()));
         }
-        return parseFromPath(Paths.get(csvPath));
+        // A relative ground truth path is anchored to the working directory and may not
+        // climb out of it, so the configured value cannot be turned into a read of any file.
+        Optional<Path> configuredGroundTruth =
+                PathContainmentValidator.resolveConfiguredLocation(csvPath);
+        if (configuredGroundTruth.isEmpty()) {
+            throw new IOException(
+                    "Point benchmark.sast.ground-truth.path at a location inside the working"
+                            + " directory, or at an absolute path: "
+                            + csvPath);
+        }
+        return parseFromPath(configuredGroundTruth.get());
     }
 
     private List<ExpectedIssue> parseFromResource(String location) throws IOException {

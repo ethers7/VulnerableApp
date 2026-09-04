@@ -46,13 +46,17 @@ export function getHeadersWithForwardedHost(inputId = "forwardedHostInput") {
   return forwardedHost ? { "X-Forwarded-Host": forwardedHost } : {};
 }
 
-export function setDemoUserCookie(value) {
-  if (value) {
-    document.cookie = `demo_user=${value}; path=/; SameSite=Lax`;
-  } else {
-    document.cookie =
-      "demo_user=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-  }
+// The personalized demo user is stored server-side: the browser only receives an
+// opaque reference in the HttpOnly "demo_user" cookie issued by /setDemoUser, so
+// the user name (and the PII derived from it) is never held in a script readable
+// cookie. Sending an empty value clears the personalization again.
+export function setDemoUser(value, onDone) {
+  const setDemoUserUrl = getUrlForVulnerability() + "/setDemoUser";
+  const body = new URLSearchParams();
+  body.set("demoUser", value || "");
+  doPostAjaxCall(onDone, setDemoUserUrl, true, body.toString(), {
+    "Content-Type": "application/x-www-form-urlencoded",
+  });
 }
 
 export function fetchDataCallback(data, request) {

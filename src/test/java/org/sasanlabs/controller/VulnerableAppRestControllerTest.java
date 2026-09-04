@@ -9,8 +9,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -255,6 +258,22 @@ class VulnerableAppRestControllerTest {
         when(expectedIssuesProvider.getExpectedIssues()).thenThrow(new IOException("boom"));
 
         assertThrows(IOException.class, () -> controller.getSastScannerRelatedInformation());
+    }
+
+    /**
+     * Every endpoint on this controller is a read. They used to be mapped without an HTTP method,
+     * which accepts any method, so a state-changing request shape reached the same handler; CSRF
+     * protection does not cover GET/HEAD/TRACE/OPTIONS, which is what makes such a mapping a
+     * finding. A write method must now be refused before the handler runs.
+     */
+    @Test
+    void readOnlyEndpoints_refuseWriteMethods() throws Exception {
+        mockMvc.perform(post("/allEndPointJson")).andExpect(status().isMethodNotAllowed());
+        mockMvc.perform(post("/scanner/dast")).andExpect(status().isMethodNotAllowed());
+        mockMvc.perform(post("/scanner/sast")).andExpect(status().isMethodNotAllowed());
+        mockMvc.perform(delete("/sitemap.xml")).andExpect(status().isMethodNotAllowed());
+
+        verifyNoInteractions(endPointsInformationProvider, expectedIssuesProvider);
     }
 
     private static List<ExpectedIssue> twoExpectedIssues() {
