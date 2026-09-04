@@ -63,14 +63,21 @@ class PasswordHashingUtilsTest {
     }
 
     @Test
-    @DisplayName("LM Hash: Should be case-insensitive and match legacy standards")
-    void lmHash_LegacyStandards() {
-        // Known LM hash for "password" (which it converts to "PASSWORD")
-        String expected = "e52cac67419a9a224a3b108f3fa6cb6d";
+    @DisplayName("Argon2id: Should validate successfully even though hashes are unique each time")
+    void argon2_UniqueGenerationAndValidation() {
+        String password = "mySecretPassword";
+        String hash1 = PasswordHashingUtils.argon2Hash(password);
+        String hash2 = PasswordHashingUtils.argon2Hash(password);
 
-        assertEquals(expected, PasswordHashingUtils.lmHash("password"));
-        assertEquals(expected, PasswordHashingUtils.lmHash("PASSWORD"));
-        assertEquals(expected, PasswordHashingUtils.lmHash("pAsSwOrD"));
+        // Argon2 embeds a unique random salt, so two hashes of the same password differ
+        assertNotEquals(hash1, hash2);
+
+        // But both verify against the password
+        assertTrue(PasswordHashingUtils.isValidArgon2(password, hash1));
+        assertTrue(PasswordHashingUtils.isValidArgon2(password, hash2));
+
+        // Unlike the LM hash it replaced, Argon2id is case sensitive
+        assertFalse(PasswordHashingUtils.isValidArgon2(password.toUpperCase(), hash1));
     }
 
     @Test
@@ -86,5 +93,7 @@ class PasswordHashingUtilsTest {
     void validation_NullInputs() {
         assertFalse(PasswordHashingUtils.isValidSaltedSha256(null, "someHash"));
         assertFalse(PasswordHashingUtils.isValidSaltedSha256("somePass", null));
+        assertFalse(PasswordHashingUtils.isValidArgon2(null, "someHash"));
+        assertFalse(PasswordHashingUtils.isValidArgon2("somePass", null));
     }
 }

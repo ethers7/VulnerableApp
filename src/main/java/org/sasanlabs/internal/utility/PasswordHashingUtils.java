@@ -2,9 +2,8 @@ package org.sasanlabs.internal.utility;
 
 import java.nio.charset.StandardCharsets;
 import java.security.*;
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 /** Utility class for various password hashing algorithms. */
@@ -12,6 +11,13 @@ public final class PasswordHashingUtils {
 
     private static final String HASH_SEPARATOR = ":";
     private static final int bcryptWorkFactor = 12;
+
+    // Argon2id cost parameters, the values Spring Security recommends as defaults.
+    private static final int ARGON2_SALT_LENGTH = 16;
+    private static final int ARGON2_HASH_LENGTH = 32;
+    private static final int ARGON2_PARALLELISM = 1;
+    private static final int ARGON2_MEMORY_KB = 1 << 14;
+    private static final int ARGON2_ITERATIONS = 2;
 
     private PasswordHashingUtils() {}
 
@@ -103,52 +109,29 @@ public final class PasswordHashingUtils {
     }
 
     /**
-     * Computes an LM hash for the given password.
+     * Hashes the given password with Argon2id, a memory hard adaptive password hash. The returned
+     * value embeds a unique random salt and the cost parameters, so it is verified with {@link
+     * #isValidArgon2(String, String)} rather than by comparing hashes.
      *
-     * <p>Algorithm based on the LAN Manager specification.
-     *
-     * @see <a href="https://en.wikipedia.org/wiki/LAN_Manager">Wikipedia: LAN Manager</a>
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc9106">RFC 9106: Argon2</a>
      */
-    public static String lmHash(String rawPassword) {
-        try {
-            // Convert to uppercase and pad to 14 bytes
-            String pwd = rawPassword.toUpperCase();
-            byte[] keyBytes = new byte[14];
-            byte[] passwordBytes = pwd.getBytes(StandardCharsets.US_ASCII);
-            System.arraycopy(passwordBytes, 0, keyBytes, 0, Math.min(passwordBytes.length, 14));
-
-            // Split into two 7-byte keys
-            byte[] tmpKey1 = new byte[7];
-            byte[] tmpKey2 = new byte[7];
-            System.arraycopy(keyBytes, 0, tmpKey1, 0, 7);
-            System.arraycopy(keyBytes, 7, tmpKey2, 0, 7);
-
-            // Encrypt the magic string "KGS!@#$%" using each key
-            return EncodingUtils.bytesToHex(lmDesEncrypt(tmpKey1))
-                    + EncodingUtils.bytesToHex(lmDesEncrypt(tmpKey2));
-        } catch (Exception e) {
-            throw new RuntimeException("LM Hashing failed", e);
-        }
+    public static String argon2Hash(String rawPassword) {
+        return argon2Encoder().encode(rawPassword);
     }
 
-    private static byte[] lmDesEncrypt(byte[] key7) throws Exception {
-        // LM Hash uses a specific parity-bit transformation to turn 7 bytes into an 8-byte DES key
-        byte[] key8 = new byte[8];
-        key8[0] = (byte) (key7[0] >> 1);
-        key8[1] = (byte) (((key7[0] & 0x01) << 6) | (key7[1] >> 2));
-        key8[2] = (byte) (((key7[1] & 0x03) << 5) | (key7[2] >> 3));
-        key8[3] = (byte) (((key7[2] & 0x07) << 4) | (key7[3] >> 4));
-        key8[4] = (byte) (((key7[3] & 0x0F) << 3) | (key7[4] >> 5));
-        key8[5] = (byte) (((key7[4] & 0x1F) << 2) | (key7[5] >> 6));
-        key8[6] = (byte) (((key7[5] & 0x3F) << 1) | (key7[6] >> 7));
-        key8[7] = (byte) (key7[6] & 0x7F);
-
-        for (int i = 0; i < 8; i++) {
-            key8[i] = (byte) (key8[i] << 1);
+    public static boolean isValidArgon2(String rawPassword, String argon2Hash) {
+        if (rawPassword == null || argon2Hash == null) {
+            return false;
         }
+        return argon2Encoder().matches(rawPassword, argon2Hash);
+    }
 
-        Cipher des = Cipher.getInstance("DES/ECB/NoPadding", "BC");
-        des.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key8, "DES"));
-        return des.doFinal("KGS!@#$%".getBytes(StandardCharsets.US_ASCII));
+    private static Argon2PasswordEncoder argon2Encoder() {
+        return new Argon2PasswordEncoder(
+                ARGON2_SALT_LENGTH,
+                ARGON2_HASH_LENGTH,
+                ARGON2_PARALLELISM,
+                ARGON2_MEMORY_KB,
+                ARGON2_ITERATIONS);
     }
 }
