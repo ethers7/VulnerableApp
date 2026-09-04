@@ -366,6 +366,12 @@ function doGetAjaxCall(callBack, url, isJson, headers = {}, onError) {
   );
 
   for (const header in headers) {
+    // Only forward the caller's own header entries: a for..in walk also sees
+    // inherited keys, so anything added to Object.prototype (e.g. by one of
+    // the XSS lessons) would otherwise be sent as a real request header.
+    if (!Object.prototype.hasOwnProperty.call(headers, header)) {
+      continue;
+    }
     xmlHttpRequest.setRequestHeader(header, headers[header]);
   }
 
@@ -379,6 +385,12 @@ function doPostAjaxCall(callBack, url, isJson, data, headers = {}) {
   };
   xmlHttpRequest.open("POST", url, true);
   for (const header in headers) {
+    // Only forward the caller's own header entries: a for..in walk also sees
+    // inherited keys, so anything added to Object.prototype (e.g. by one of
+    // the XSS lessons) would otherwise be sent as a real request header.
+    if (!Object.prototype.hasOwnProperty.call(headers, header)) {
+      continue;
+    }
     xmlHttpRequest.setRequestHeader(header, headers[header]);
   }
   xmlHttpRequest.send(data);
@@ -387,6 +399,13 @@ function doPostAjaxCall(callBack, url, isJson, data, headers = {}) {
 function generateMasterDetail(vulnerableAppEndPointData) {
   let isFirst = true;
   for (let index in vulnerableAppEndPointData) {
+    // Skip inherited keys so only entries actually present in the API
+    // response can become master items.
+    if (
+      !Object.prototype.hasOwnProperty.call(vulnerableAppEndPointData, index)
+    ) {
+      continue;
+    }
     let column = document.createElement("div");
     if (isFirst) {
       column.className = "master-item  active-item";
@@ -414,13 +433,17 @@ function _addingEventListenerToShowHideHelpButton(vulnerableAppEndPointData) {
   document.getElementById("showHelp").addEventListener("click", function () {
     document.getElementById("showHelp").disabled = true;
     let helpText = "<ol>";
-    for (let index in vulnerableAppEndPointData[currentId][
-      "Detailed Information"
-    ][currentKey]["AttackVectors"]) {
-      let attackVector =
-        vulnerableAppEndPointData[currentId]["Detailed Information"][
-          currentKey
-        ]["AttackVectors"][index];
+    let attackVectors =
+      vulnerableAppEndPointData[currentId]["Detailed Information"][currentKey][
+        "AttackVectors"
+      ];
+    for (let index in attackVectors) {
+      // Iterate own entries only, so an inherited property cannot be rendered
+      // as if the API had returned an extra attack vector.
+      if (!Object.prototype.hasOwnProperty.call(attackVectors, index)) {
+        continue;
+      }
+      let attackVector = attackVectors[index];
       let curlPayload = attackVector["CurlPayload"];
       let description = attackVector["Description"];
       helpText =

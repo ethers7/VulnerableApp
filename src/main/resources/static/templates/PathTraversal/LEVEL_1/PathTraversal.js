@@ -21,13 +21,20 @@ function appendResponseCallback(data) {
       }
     }
     for (let index in content) {
+      // content is parsed from the backend response, which this level lets the
+      // user steer via fileName. Walk own entries only so inherited properties
+      // cannot be rendered as extra rows/cells.
+      if (!Object.prototype.hasOwnProperty.call(content, index)) {
+        continue;
+      }
       tableInformation = tableInformation + '<tr id="Info">';
-      for (let key in content[index]) {
+      let row = content[index];
+      for (let key in row) {
+        if (!Object.prototype.hasOwnProperty.call(row, key)) {
+          continue;
+        }
         tableInformation =
-          tableInformation +
-          '<td id="InfoColumn">' +
-          content[index][key] +
-          "</td>";
+          tableInformation + '<td id="InfoColumn">' + row[key] + "</td>";
       }
       tableInformation = tableInformation + "</tr>";
     }
