@@ -5,34 +5,38 @@ import {
   getHeadersWithForwardedHost,
   getInputValue,
   getRequestUrl,
-  setDemoUserCookie,
+  setDemoUser,
 } from "../Common/CachePoisoningCommon.js";
+
+function sendAttackerRequest() {
+  doGetAjaxCall(
+    fetchDataCallback,
+    getRequestUrl(),
+    true,
+    getHeadersWithForwardedHost()
+  );
+}
 
 document
   .getElementById("poisonCacheBtn")
   .addEventListener("click", function () {
     const demoUser = getInputValue("demoUserInput");
-    if (demoUser) {
-      setDemoUserCookie(demoUser);
-    }
-
-    doGetAjaxCall(
-      fetchDataCallback,
-      getRequestUrl(),
-      true,
-      getHeadersWithForwardedHost()
-    );
     clearInputs(["demoUserInput"]);
+    if (demoUser) {
+      setDemoUser(demoUser, sendAttackerRequest);
+    } else {
+      sendAttackerRequest();
+    }
   });
 
 document.getElementById("resetCacheBtn").addEventListener("click", function () {
-  setDemoUserCookie(null);
-  clearCacheAndFetchFreshResponse();
+  setDemoUser(null, clearCacheAndFetchFreshResponse);
 });
 
 document
   .getElementById("victimRequestBtn")
   .addEventListener("click", function () {
-    setDemoUserCookie(null);
-    doGetAjaxCall(fetchDataCallback, getRequestUrl(), true, {});
+    setDemoUser(null, function () {
+      doGetAjaxCall(fetchDataCallback, getRequestUrl(), true, {});
+    });
   });

@@ -8,13 +8,13 @@ CWE-916,Weak Password Hashing,src/main/java/org/sasanlabs/service/vulnerability/
 CWE-204,Username Enumeration,src/main/java/org/sasanlabs/service/vulnerability/authentication/AuthenticationVulnerability.java,265,1
 CWE-916,Weak Password Hashing,src/main/java/org/sasanlabs/service/vulnerability/authentication/AuthenticationVulnerability.java,302,1
 CWE-916,Weak Password Hashing,src/main/java/org/sasanlabs/service/vulnerability/authentication/AuthenticationVulnerability.java,364,1
-CWE-349,Web Cache Poisoning,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,67,1
-CWE-79,Reflected XSS,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,71,1
-CWE-349,Web Cache Poisoning,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,91,1
-CWE-79,Reflected XSS,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,95,1
-CWE-349,Web Cache Poisoning,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,115,1
-CWE-79,Reflected XSS,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,119,1
-CWE-349,Web Cache Poisoning,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,139,1
+CWE-349,Web Cache Poisoning,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,88,1
+CWE-79,Reflected XSS,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,92,1
+CWE-349,Web Cache Poisoning,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,112,1
+CWE-79,Reflected XSS,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,116,1
+CWE-349,Web Cache Poisoning,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,136,1
+CWE-79,Reflected XSS,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,140,1
+CWE-349,Web Cache Poisoning,src/main/java/org/sasanlabs/service/vulnerability/cachePoisoning/CachePoisoningVulnerability.java,160,1
 CWE-1021,Clickjacking,src/main/java/org/sasanlabs/service/vulnerability/clickjacking/ClickjackingVulnerability.java,46,1
 CWE-1021,Clickjacking,src/main/java/org/sasanlabs/service/vulnerability/clickjacking/ClickjackingVulnerability.java,72,1
 CWE-1021,Clickjacking,src/main/java/org/sasanlabs/service/vulnerability/clickjacking/ClickjackingVulnerability.java,102,1
