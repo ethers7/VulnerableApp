@@ -2,6 +2,7 @@ package org.sasanlabs.internal.utility;
 
 import java.nio.charset.StandardCharsets;
 import java.security.*;
+import java.util.Locale;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.security.crypto.argon2.Argon2PasswordEncoder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -77,12 +78,15 @@ public final class PasswordHashingUtils {
 
         String[] saltAndHash = saltedSha256Hash.split(HASH_SEPARATOR, 2);
         if (saltAndHash.length != 2) {
-            // Backward compatibility for old plaintext test data.
-            return saltedSha256Hash.equals(rawPassword);
+            // Backward compatibility for old plaintext test data. Compared in constant time so
+            // that the stored value cannot be recovered one character at a time.
+            return SecretComparisonUtils.isEqual(saltedSha256Hash, rawPassword);
         }
 
         String calculatedHash = sha256Hex(saltAndHash[0], rawPassword);
-        return saltAndHash[1].equalsIgnoreCase(calculatedHash);
+        // The stored hex digest may have been persisted in either case, hence the normalisation.
+        return SecretComparisonUtils.isEqual(
+                saltAndHash[1].toLowerCase(Locale.ROOT), calculatedHash);
     }
 
     public static String sha256Hex(String salt, String rawPassword) {

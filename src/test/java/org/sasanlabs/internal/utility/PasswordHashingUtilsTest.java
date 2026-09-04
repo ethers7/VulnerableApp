@@ -45,6 +45,32 @@ class PasswordHashingUtilsTest {
 
         assertTrue(PasswordHashingUtils.isValidSaltedSha256(rawPassword, storedValue));
         assertFalse(PasswordHashingUtils.isValidSaltedSha256("wrongPass", storedValue));
+        // A guess of the same length that differs in its last character is rejected as well, the
+        // constant time comparison does not stop at the first difference.
+        String sameLengthGuess = rawPassword.substring(0, rawPassword.length() - 1) + "4";
+        assertFalse(PasswordHashingUtils.isValidSaltedSha256(sameLengthGuess, storedValue));
+    }
+
+    @Test
+    @DisplayName("SHA-256: Should keep accepting a stored digest that was persisted in upper case")
+    void isValidSaltedSha256_CaseInsensitiveDigest() {
+        String salt = "random_salt";
+        String rawPassword = "securePassword123";
+        String digest = PasswordHashingUtils.sha256Hex(salt, rawPassword).toUpperCase();
+        String storedValue = salt + ":" + digest;
+
+        assertTrue(PasswordHashingUtils.isValidSaltedSha256(rawPassword, storedValue));
+        assertFalse(PasswordHashingUtils.isValidSaltedSha256("wrongPass", storedValue));
+    }
+
+    @Test
+    @DisplayName("SHA-256: Should keep validating stored values that carry no salt separator")
+    void isValidSaltedSha256_LegacyValueWithoutSeparator() {
+        String storedValue = "legacyPlaintextValue";
+
+        assertTrue(PasswordHashingUtils.isValidSaltedSha256(storedValue, storedValue));
+        assertFalse(PasswordHashingUtils.isValidSaltedSha256("legacyPlaintextValu3", storedValue));
+        assertFalse(PasswordHashingUtils.isValidSaltedSha256("legacy", storedValue));
     }
 
     @Test
