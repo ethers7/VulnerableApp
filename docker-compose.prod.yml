@@ -17,6 +17,8 @@ services:
       - /benchmarks
       - /contentDispositionUpload
       - /app/resources/static/upload
+    security_opt:
+      - no-new-privileges:true
     environment:
       - DB_ADMIN_USERNAME=${DB_ADMIN_USERNAME}
       - DB_ADMIN_PASSWORD=${DB_ADMIN_PASSWORD}
@@ -35,6 +37,8 @@ services:
       - VulnerableApp-base
     image: sasanlabs/owasp-vulnerableapp-facade:latest
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - ./templates:/etc/nginx/templates:ro
     ports:

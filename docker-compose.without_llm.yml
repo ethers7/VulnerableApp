@@ -13,12 +13,18 @@ services:
         - /benchmarks
         - /contentDispositionUpload
         - /app/resources/static/upload
+      security_opt:
+        - no-new-privileges:true
 
     VulnerableApp-jsp:
       image: sasanlabs/owasp-vulnerableapp-jsp:latest
- 
+      security_opt:
+        - no-new-privileges:true
+
     VulnerableApp-php:
       image: sasanlabs/owasp-vulnerableapp-php:latest
+      security_opt:
+        - no-new-privileges:true
 
     mailpit:
       image: axllent/mailpit:v1.30.1
@@ -40,6 +46,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
 
     VulnerableApp-facade:
       depends_on:
@@ -48,6 +56,8 @@ services:
         - VulnerableApp-php
         - mailpit
       image: sasanlabs/owasp-vulnerableapp-facade:latest
+      security_opt:
+        - no-new-privileges:true
       volumes:
        - ./templates:/etc/nginx/templates
       ports:

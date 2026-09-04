@@ -13,16 +13,22 @@ services:
         - /benchmarks
         - /contentDispositionUpload
         - /app/resources/static/upload
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
-      
+
     VulnerableApp-jsp:
       image: sasanlabs/owasp-vulnerableapp-jsp:latest
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
- 
+
     VulnerableApp-php:
       image: sasanlabs/owasp-vulnerableapp-php:latest
+      security_opt:
+        - no-new-privileges:true
       networks:
         - app_net
 
@@ -37,6 +43,8 @@ services:
       read_only: true
       tmpfs:
        - /tmp
+      security_opt:
+       - no-new-privileges:true
       healthcheck:
         test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
         interval: 10s
@@ -71,12 +79,16 @@ services:
       read_only: true
       tmpfs:
        - /tmp
+      security_opt:
+       - no-new-privileges:true
       restart: "no"
       networks:
         - app_net
 
     llmforge:
       image: sasanlabs/llmforge:latest
+      security_opt:
+       - no-new-privileges:true
       depends_on:
         ollama:
           condition: service_healthy
@@ -114,6 +126,8 @@ services:
       read_only: true
       tmpfs:
         - /tmp
+      security_opt:
+        - no-new-privileges:true
       networks:
         app_net:
           aliases:
@@ -127,6 +141,8 @@ services:
         - llmforge
         - mailpit
       image: sasanlabs/owasp-vulnerableapp-facade:latest
+      security_opt:
+        - no-new-privileges:true
       volumes:
        - ./templates:/etc/nginx/templates
       ports:
