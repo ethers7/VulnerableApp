@@ -138,6 +138,7 @@ from outside.
 | Random credentials | New username and password generated on every start |
 | Internal network | Base container has no internet access |
 | Read-only volume | Nginx templates mounted as read-only |
+| Read-only filesystem | Base container runs with `read_only: true`; only the runtime paths it writes to (`/tmp`, `/logs`, `/benchmarks`, upload directories) are writable tmpfs mounts |
 | H2 console disabled | `public` profile disables the H2 web console |
 | Active profile | Runs `public` only — `unsafe` profile is excluded |
 

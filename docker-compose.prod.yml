@@ -6,6 +6,17 @@ services:
     networks:
       - internal
     restart: unless-stopped
+    # The container filesystem is read-only, so a payload cannot be dropped into the image.
+    # Only the paths the application writes to at runtime are writable, as tmpfs: /tmp
+    # (embedded Tomcat work directory and multipart temp files), /logs (log4j2 rolling file),
+    # /benchmarks (benchmark.output.dir) and the two UnrestrictedFileUpload directories.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /logs
+      - /benchmarks
+      - /contentDispositionUpload
+      - /app/resources/static/upload
     environment:
       - DB_ADMIN_USERNAME=${DB_ADMIN_USERNAME}
       - DB_ADMIN_PASSWORD=${DB_ADMIN_PASSWORD}

@@ -2,7 +2,18 @@ version: "3.9"
 services:
     VulnerableApp-base:
       image: sasanlabs/owasp-vulnerableapp:latest
-      
+      # The container filesystem is read-only, so a payload cannot be dropped into the image.
+      # Only the paths the application writes to at runtime are writable, as tmpfs: /tmp
+      # (embedded Tomcat work directory and multipart temp files), /logs (log4j2 rolling file),
+      # /benchmarks (benchmark.output.dir) and the two UnrestrictedFileUpload directories.
+      read_only: true
+      tmpfs:
+        - /tmp
+        - /logs
+        - /benchmarks
+        - /contentDispositionUpload
+        - /app/resources/static/upload
+
     VulnerableApp-jsp:
       image: sasanlabs/owasp-vulnerableapp-jsp:latest
  
@@ -24,7 +35,12 @@ services:
         - MP_WEBROOT=/mailpit
       volumes:
         - mailpit_data:/data
-    
+      # The message store (MP_DATABASE) is on the mailpit_data volume, so the image can stay
+      # read-only; /tmp is a tmpfs for the database scratch files.
+      read_only: true
+      tmpfs:
+        - /tmp
+
     VulnerableApp-facade:
       depends_on:
         - VulnerableApp-base
