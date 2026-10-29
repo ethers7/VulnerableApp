@@ -1,6 +1,7 @@
 package org.sasanlabs.benchmark.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
@@ -67,14 +68,27 @@ class BenchmarkResultWriterTest {
     @Test
     void write_withCustomDir_overridesDefault(@TempDir Path tempDir) throws Exception {
         Path defaultDir = tempDir.resolve("default");
-        Path overrideDir = tempDir.resolve("override");
+        Path overrideDir = defaultDir.resolve("override");
         BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, defaultDir.toString());
 
-        Path target = writer.write(sampleResult("ZAP"), overrideDir.toString());
+        Path target = writer.write(sampleResult("ZAP"), "override");
 
-        assertThat(target).isEqualTo(overrideDir.resolve("zap-results.json"));
+        assertThat(target.toAbsolutePath().normalize())
+                .isEqualTo(overrideDir.toAbsolutePath().normalize().resolve("zap-results.json"));
         assertThat(Files.exists(target)).isTrue();
-        assertThat(Files.exists(defaultDir)).isFalse();
+    }
+
+    @Test
+    void write_withDirOutsideConfiguredBase_isRejected(@TempDir Path tempDir) {
+        Path defaultDir = tempDir.resolve("default");
+        Path outside = tempDir.resolve("outside");
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, defaultDir.toString());
+
+        assertThatThrownBy(() -> writer.write(sampleResult("ZAP"), "../outside"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> writer.write(sampleResult("ZAP"), outside.toString()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(Files.exists(outside)).isFalse();
     }
 
     @Test

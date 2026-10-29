@@ -6,11 +6,14 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import javax.annotation.PostConstruct;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -103,7 +106,34 @@ public class CsvExpectedIssuesProvider implements IExpectedIssuesProvider {
         if (csvPath.startsWith(CLASSPATH_PREFIX)) {
             return parseFromResource(csvPath.substring(CLASSPATH_PREFIX.length()));
         }
-        return parseFromPath(Paths.get(csvPath));
+        return parseFromPath(validateCsvPath(csvPath));
+    }
+
+    /**
+     * Canonicalizes the configured filesystem path and fails closed unless it is free of {@code ..}
+     * segments, names a {@code .csv} file and points at an existing regular file.
+     */
+    private static Path validateCsvPath(String rawPath) throws IOException {
+        Path requested;
+        try {
+            requested = Paths.get(rawPath);
+        } catch (InvalidPathException e) {
+            throw new IOException("Invalid SAST ground truth path", e);
+        }
+        for (Path segment : requested) {
+            if ("..".equals(segment.toString())) {
+                throw new IOException("SAST ground truth path must not contain '..' segments");
+            }
+        }
+        Path normalized = requested.toAbsolutePath().normalize();
+        Path fileName = normalized.getFileName();
+        if (fileName == null || !fileName.toString().toLowerCase(Locale.ROOT).endsWith(".csv")) {
+            throw new IOException("SAST ground truth path must refer to a .csv file");
+        }
+        if (!Files.isRegularFile(normalized)) {
+            throw new NoSuchFileException(normalized.toString());
+        }
+        return normalized;
     }
 
     private List<ExpectedIssue> parseFromResource(String location) throws IOException {
