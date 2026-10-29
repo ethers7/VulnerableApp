@@ -6,11 +6,13 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import javax.annotation.PostConstruct;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -43,6 +45,7 @@ public class CsvExpectedIssuesProvider implements IExpectedIssuesProvider {
     private static final Logger LOGGER = LogManager.getLogger(CsvExpectedIssuesProvider.class);
 
     private static final String CLASSPATH_PREFIX = "classpath:";
+    private static final String CSV_EXTENSION = ".csv";
 
     private static final String COL_CWE = "CWE";
     private static final String COL_TYPE = "Vulnerability Type";
@@ -103,7 +106,28 @@ public class CsvExpectedIssuesProvider implements IExpectedIssuesProvider {
         if (csvPath.startsWith(CLASSPATH_PREFIX)) {
             return parseFromResource(csvPath.substring(CLASSPATH_PREFIX.length()));
         }
-        return parseFromPath(Paths.get(csvPath));
+        return parseFromPath(resolveCsvFile(csvPath));
+    }
+
+    /**
+     * Resolves the configured filesystem location to a canonical path (symlinks and {@code ..}
+     * segments resolved) and only accepts an existing regular {@code .csv} file, so the property
+     * cannot be used to read arbitrary files.
+     */
+    private static Path resolveCsvFile(String configured) throws IOException {
+        Path real;
+        try {
+            real = Paths.get(configured).toAbsolutePath().normalize().toRealPath();
+        } catch (InvalidPathException e) {
+            throw new IOException("Invalid SAST ground truth path", e);
+        }
+        Path fileName = real.getFileName();
+        if (fileName == null
+                || !fileName.toString().toLowerCase(Locale.ROOT).endsWith(CSV_EXTENSION)
+                || !Files.isRegularFile(real)) {
+            throw new IOException("SAST ground truth path must point to a regular .csv file");
+        }
+        return real;
     }
 
     private List<ExpectedIssue> parseFromResource(String location) throws IOException {
