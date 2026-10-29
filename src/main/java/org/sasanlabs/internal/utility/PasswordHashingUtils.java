@@ -2,8 +2,8 @@ package org.sasanlabs.internal.utility;
 
 import java.nio.charset.StandardCharsets;
 import java.security.*;
-import javax.crypto.Cipher;
-import javax.crypto.spec.SecretKeySpec;
+import org.bouncycastle.crypto.engines.DESEngine;
+import org.bouncycastle.crypto.params.KeyParameter;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
@@ -147,8 +147,14 @@ public final class PasswordHashingUtils {
             key8[i] = (byte) (key8[i] << 1);
         }
 
-        Cipher des = Cipher.getInstance("DES/ECB/NoPadding", "BC");
-        des.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key8, "DES"));
-        return des.doFinal("KGS!@#$%".getBytes(StandardCharsets.US_ASCII));
+        // The LM scheme is defined as exactly one raw DES block encryption of a fixed constant, so
+        // no chaining mode (ECB/CBC) is involved. Use the raw block engine for that single block
+        // instead of a mode-based Cipher transformation.
+        byte[] magic = "KGS!@#$%".getBytes(StandardCharsets.US_ASCII);
+        DESEngine des = new DESEngine();
+        des.init(true, new KeyParameter(key8));
+        byte[] out = new byte[des.getBlockSize()];
+        des.processBlock(magic, 0, out, 0);
+        return out;
     }
 }
