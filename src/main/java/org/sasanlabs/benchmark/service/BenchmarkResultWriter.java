@@ -21,22 +21,39 @@ import org.springframework.stereotype.Component;
 public class BenchmarkResultWriter {
 
     private final ObjectMapper objectMapper;
-    private final String defaultBenchmarksDir;
+    private final Path baseDir;
 
     public BenchmarkResultWriter(
             ObjectMapper objectMapper,
             @Value("${benchmark.output.dir:benchmarks}") String defaultBenchmarksDir) {
         this.objectMapper = objectMapper;
-        this.defaultBenchmarksDir = defaultBenchmarksDir;
+        this.baseDir = Paths.get(defaultBenchmarksDir).toAbsolutePath().normalize();
     }
 
     public Path write(BenchmarkResult result) throws IOException {
-        return write(result, defaultBenchmarksDir);
+        return writeInto(result, baseDir);
     }
 
+    /**
+     * Writes into {@code benchmarksDir}, which is resolved against (and must stay inside) the
+     * configured benchmarks directory. Absolute paths, {@code ..} segments and symlinks that lead
+     * outside the configured directory are rejected.
+     */
     public Path write(BenchmarkResult result, String benchmarksDir) throws IOException {
-        Path dir = Paths.get(benchmarksDir);
+        Path requested = baseDir.resolve(benchmarksDir).normalize();
+        if (!requested.startsWith(baseDir)) {
+            throw new IllegalArgumentException(
+                    "Benchmarks directory must be inside the configured output directory");
+        }
+        return writeInto(result, requested);
+    }
+
+    private Path writeInto(BenchmarkResult result, Path dir) throws IOException {
         Files.createDirectories(dir);
+        if (!dir.toRealPath().startsWith(baseDir.toRealPath())) {
+            throw new IllegalArgumentException(
+                    "Benchmarks directory must be inside the configured output directory");
+        }
         String fileName = sanitizeToolName(result.getTool()) + "-results.json";
         Path target = dir.resolve(fileName);
         Path temp = Files.createTempFile(dir, fileName + ".", ".tmp");

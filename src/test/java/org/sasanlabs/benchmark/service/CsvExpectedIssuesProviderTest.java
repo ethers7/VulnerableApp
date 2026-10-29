@@ -159,6 +159,25 @@ class CsvExpectedIssuesProviderTest {
     }
 
     @Test
+    void nonCsvFile_isRejected(@TempDir Path tempDir) throws Exception {
+        Path notCsv = tempDir.resolve("secrets.txt");
+        write(notCsv, HEADER + "CWE-89,SQL Injection,src/main/java/Foo.java,56,1\n");
+
+        assertThatThrownBy(
+                        () ->
+                                new CsvExpectedIssuesProvider(notCsv.toString())
+                                        .getExpectedIssues())
+                .isInstanceOf(IOException.class);
+    }
+
+    @Test
+    void directory_isRejected(@TempDir Path tempDir) {
+        assertThatThrownBy(
+                        () -> new CsvExpectedIssuesProvider(tempDir.toString()).getExpectedIssues())
+                .isInstanceOf(IOException.class);
+    }
+
+    @Test
     void classpathPrefix_readsFromTheClasspath() throws Exception {
         List<ExpectedIssue> issues =
                 new CsvExpectedIssuesProvider("classpath:scanner/sast/test-expectedIssues.csv")

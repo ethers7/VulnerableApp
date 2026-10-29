@@ -1,12 +1,14 @@
 package org.sasanlabs.benchmark.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.sasanlabs.benchmark.model.BenchmarkResult;
@@ -65,16 +67,53 @@ class BenchmarkResultWriterTest {
     }
 
     @Test
-    void write_withCustomDir_overridesDefault(@TempDir Path tempDir) throws Exception {
+    void write_withCustomSubDir_writesInsideDefault(@TempDir Path tempDir) throws Exception {
         Path defaultDir = tempDir.resolve("default");
-        Path overrideDir = tempDir.resolve("override");
         BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, defaultDir.toString());
 
-        Path target = writer.write(sampleResult("ZAP"), overrideDir.toString());
+        Path target = writer.write(sampleResult("ZAP"), "override");
 
-        assertThat(target).isEqualTo(overrideDir.resolve("zap-results.json"));
+        assertThat(target).isEqualTo(defaultDir.resolve("override").resolve("zap-results.json"));
         assertThat(Files.exists(target)).isTrue();
-        assertThat(Files.exists(defaultDir)).isFalse();
+    }
+
+    @Test
+    void write_withParentTraversalDir_isRejected(@TempDir Path tempDir) {
+        Path defaultDir = tempDir.resolve("default");
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, defaultDir.toString());
+
+        assertThatThrownBy(() -> writer.write(sampleResult("ZAP"), "../outside"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(Files.exists(tempDir.resolve("outside"))).isFalse();
+    }
+
+    @Test
+    void write_withAbsoluteDirOutsideBase_isRejected(@TempDir Path tempDir) {
+        Path defaultDir = tempDir.resolve("default");
+        Path outside = tempDir.resolve("outside");
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, defaultDir.toString());
+
+        assertThatThrownBy(() -> writer.write(sampleResult("ZAP"), outside.toString()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(Files.exists(outside)).isFalse();
+    }
+
+    @Test
+    void write_withSymlinkEscapingBase_isRejected(@TempDir Path tempDir) throws Exception {
+        Path defaultDir = Files.createDirectories(tempDir.resolve("default"));
+        Path outside = Files.createDirectories(tempDir.resolve("outside"));
+        try {
+            Files.createSymbolicLink(defaultDir.resolve("link"), outside);
+        } catch (UnsupportedOperationException | java.io.IOException e) {
+            Assumptions.assumeTrue(false, "symlinks not supported");
+        }
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, defaultDir.toString());
+
+        assertThatThrownBy(() -> writer.write(sampleResult("ZAP"), "link"))
+                .isInstanceOf(IllegalArgumentException.class);
+        try (java.util.stream.Stream<Path> entries = Files.list(outside)) {
+            assertThat(entries).isEmpty();
+        }
     }
 
     @Test
