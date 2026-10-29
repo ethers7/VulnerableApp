@@ -35,8 +35,19 @@ public class BenchmarkResultWriter {
     }
 
     public Path write(BenchmarkResult result, String benchmarksDir) throws IOException {
-        Path dir = Paths.get(benchmarksDir);
+        Path baseDir = Paths.get(defaultBenchmarksDir).toAbsolutePath().normalize();
+        // Any caller-supplied directory must resolve to the configured base directory or a
+        // location beneath it; absolute paths and ".." escapes are rejected (fail closed).
+        Path dir = baseDir.resolve(benchmarksDir).normalize();
+        if (!dir.startsWith(baseDir)) {
+            throw new IllegalArgumentException(
+                    "Benchmarks directory must be inside the configured benchmark.output.dir");
+        }
         Files.createDirectories(dir);
+        if (!dir.toRealPath().startsWith(baseDir.toRealPath())) {
+            throw new IllegalArgumentException(
+                    "Benchmarks directory must be inside the configured benchmark.output.dir");
+        }
         String fileName = sanitizeToolName(result.getTool()) + "-results.json";
         Path target = dir.resolve(fileName);
         Path temp = Files.createTempFile(dir, fileName + ".", ".tmp");
