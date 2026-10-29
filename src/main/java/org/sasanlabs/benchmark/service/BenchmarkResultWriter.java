@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -31,12 +32,23 @@ public class BenchmarkResultWriter {
     }
 
     public Path write(BenchmarkResult result) throws IOException {
-        return write(result, defaultBenchmarksDir);
+        return write(result, "");
     }
 
-    public Path write(BenchmarkResult result, String benchmarksDir) throws IOException {
-        Path dir = Paths.get(benchmarksDir);
+    /**
+     * Writes the result under the configured benchmarks directory. {@code subDirectory} is resolved
+     * relative to that base directory and must stay inside it; absolute paths or {@code ..}
+     * segments that escape the base are rejected.
+     *
+     * @throws IllegalArgumentException if the resolved directory is outside the base directory
+     */
+    public Path write(BenchmarkResult result, String subDirectory) throws IOException {
+        Path base = Paths.get(defaultBenchmarksDir).toAbsolutePath().normalize();
+        Path dir = resolveWithin(base, subDirectory);
         Files.createDirectories(dir);
+        if (!dir.toRealPath().startsWith(base.toRealPath())) {
+            throw new IllegalArgumentException("Benchmark directory escapes the base directory");
+        }
         String fileName = sanitizeToolName(result.getTool()) + "-results.json";
         Path target = dir.resolve(fileName);
         Path temp = Files.createTempFile(dir, fileName + ".", ".tmp");
@@ -48,6 +60,22 @@ public class BenchmarkResultWriter {
             throw ioe;
         }
         return target;
+    }
+
+    private static Path resolveWithin(Path base, String subDirectory) {
+        if (subDirectory == null || subDirectory.isEmpty()) {
+            return base;
+        }
+        Path resolved;
+        try {
+            resolved = base.resolve(subDirectory).normalize();
+        } catch (InvalidPathException e) {
+            throw new IllegalArgumentException("Invalid benchmark directory", e);
+        }
+        if (!resolved.startsWith(base)) {
+            throw new IllegalArgumentException("Benchmark directory escapes the base directory");
+        }
+        return resolved;
     }
 
     private static void moveAtomicallyOrReplace(Path source, Path target) throws IOException {
