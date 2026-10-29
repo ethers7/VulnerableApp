@@ -6,11 +6,13 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import javax.annotation.PostConstruct;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -103,7 +105,45 @@ public class CsvExpectedIssuesProvider implements IExpectedIssuesProvider {
         if (csvPath.startsWith(CLASSPATH_PREFIX)) {
             return parseFromResource(csvPath.substring(CLASSPATH_PREFIX.length()));
         }
-        return parseFromPath(Paths.get(csvPath));
+        return parseFromPath(resolveCsvPath(csvPath));
+    }
+
+    /**
+     * Validates a configured filesystem location before it is opened: no parent-directory
+     * segments, no NUL bytes, a {@code .csv} file name, and the resolved real path (symlinks
+     * followed) must be a regular {@code .csv} file. This keeps the property from being pointed at
+     * arbitrary non-CSV files such as {@code /etc/passwd}.
+     */
+    private static Path resolveCsvPath(String location) throws IOException {
+        if (location.indexOf('\0') >= 0) {
+            throw new IOException("Invalid ground truth path: contains a NUL byte");
+        }
+        Path candidate;
+        try {
+            candidate = Paths.get(location);
+        } catch (InvalidPathException ipe) {
+            throw new IOException("Invalid ground truth path", ipe);
+        }
+        for (Path segment : candidate) {
+            if ("..".equals(segment.toString())) {
+                throw new IOException(
+                        "Invalid ground truth path: parent directory references are not allowed");
+            }
+        }
+        Path normalized = candidate.toAbsolutePath().normalize();
+        if (!isCsvFileName(normalized)) {
+            throw new IOException("Invalid ground truth path: only .csv files are allowed");
+        }
+        Path real = normalized.toRealPath();
+        if (!isCsvFileName(real) || !Files.isRegularFile(real)) {
+            throw new IOException("Invalid ground truth path: not a regular .csv file");
+        }
+        return real;
+    }
+
+    private static boolean isCsvFileName(Path path) {
+        Path name = path.getFileName();
+        return name != null && name.toString().toLowerCase(Locale.ROOT).endsWith(".csv");
     }
 
     private List<ExpectedIssue> parseFromResource(String location) throws IOException {

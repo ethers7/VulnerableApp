@@ -21,22 +21,40 @@ import org.springframework.stereotype.Component;
 public class BenchmarkResultWriter {
 
     private final ObjectMapper objectMapper;
-    private final String defaultBenchmarksDir;
+    private final Path baseDir;
 
     public BenchmarkResultWriter(
             ObjectMapper objectMapper,
             @Value("${benchmark.output.dir:benchmarks}") String defaultBenchmarksDir) {
         this.objectMapper = objectMapper;
-        this.defaultBenchmarksDir = defaultBenchmarksDir;
+        this.baseDir = Paths.get(defaultBenchmarksDir).toAbsolutePath().normalize();
     }
 
     public Path write(BenchmarkResult result) throws IOException {
-        return write(result, defaultBenchmarksDir);
+        return writeInto(result, baseDir);
     }
 
+    /**
+     * Writes into {@code benchmarksDir}, which must be the configured benchmarks directory or a
+     * location beneath it (relative values are resolved against it). Anything that would escape it
+     * is rejected.
+     */
     public Path write(BenchmarkResult result, String benchmarksDir) throws IOException {
-        Path dir = Paths.get(benchmarksDir);
+        Path dir = baseDir.resolve(benchmarksDir).normalize();
+        if (!dir.startsWith(baseDir)) {
+            throw new IllegalArgumentException(
+                    "Benchmarks directory must be inside the configured benchmark.output.dir");
+        }
+        return writeInto(result, dir);
+    }
+
+    private Path writeInto(BenchmarkResult result, Path dir) throws IOException {
         Files.createDirectories(dir);
+        // Re-check after creation so symlinks cannot redirect the output outside the base
+        if (!dir.toRealPath().startsWith(baseDir.toRealPath())) {
+            throw new IllegalArgumentException(
+                    "Benchmarks directory must be inside the configured benchmark.output.dir");
+        }
         String fileName = sanitizeToolName(result.getTool()) + "-results.json";
         Path target = dir.resolve(fileName);
         Path temp = Files.createTempFile(dir, fileName + ".", ".tmp");

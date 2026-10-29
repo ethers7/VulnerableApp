@@ -1,6 +1,7 @@
 package org.sasanlabs.benchmark.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
@@ -67,14 +68,38 @@ class BenchmarkResultWriterTest {
     @Test
     void write_withCustomDir_overridesDefault(@TempDir Path tempDir) throws Exception {
         Path defaultDir = tempDir.resolve("default");
-        Path overrideDir = tempDir.resolve("override");
+        Path overrideDir = defaultDir.resolve("override");
         BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, defaultDir.toString());
 
         Path target = writer.write(sampleResult("ZAP"), overrideDir.toString());
 
         assertThat(target).isEqualTo(overrideDir.resolve("zap-results.json"));
         assertThat(Files.exists(target)).isTrue();
-        assertThat(Files.exists(defaultDir)).isFalse();
+    }
+
+    @Test
+    void write_withRelativeCustomDir_resolvesUnderBase(@TempDir Path tempDir) throws Exception {
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, tempDir.toString());
+
+        Path target = writer.write(sampleResult("ZAP"), "sub");
+
+        assertThat(target).isEqualTo(tempDir.resolve("sub").resolve("zap-results.json"));
+    }
+
+    @Test
+    void write_withDirOutsideBase_isRejected(@TempDir Path tempDir) {
+        Path baseDir = tempDir.resolve("base");
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, baseDir.toString());
+
+        assertThatThrownBy(() -> writer.write(sampleResult("ZAP"), "../escape"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(
+                        () ->
+                                writer.write(
+                                        sampleResult("ZAP"), tempDir.resolve("other").toString()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(Files.exists(tempDir.resolve("escape"))).isFalse();
+        assertThat(Files.exists(tempDir.resolve("other"))).isFalse();
     }
 
     @Test
