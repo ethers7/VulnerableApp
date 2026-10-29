@@ -131,8 +131,7 @@ public class VulnerableAppConfiguration {
             @Value("${spring.datasource.application.password}") String appPassword) {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
         JdbcTemplate adminJdbcTemplate = new JdbcTemplate(adminDataSource);
-        adminJdbcTemplate.execute(
-                String.format("CREATE USER application PASSWORD '%s'", appPassword));
+        adminJdbcTemplate.execute(buildCreateApplicationUserStatement(appPassword));
         populator.addScript(new ClassPathResource("scripts/SQLInjection/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/xss/PersistentXSS/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/XXEVulnerability/schema.sql"));
@@ -151,6 +150,24 @@ public class VulnerableAppConfiguration {
         initializer.setDataSource(adminDataSource);
         initializer.setDatabasePopulator(populator);
         return initializer;
+    }
+
+    /**
+     * DDL statements such as CREATE USER cannot use bind parameters, so the password literal is
+     * validated (fail closed on null/empty/control characters) and single quotes are escaped by
+     * doubling them, which is the only escape mechanism of an H2 string literal.
+     */
+    static String buildCreateApplicationUserStatement(String appPassword) {
+        if (appPassword == null || appPassword.isEmpty()) {
+            throw new IllegalArgumentException("Application DB password must not be empty");
+        }
+        for (int i = 0; i < appPassword.length(); i++) {
+            if (Character.isISOControl(appPassword.charAt(i))) {
+                throw new IllegalArgumentException(
+                        "Application DB password must not contain control characters");
+            }
+        }
+        return "CREATE USER application PASSWORD '" + appPassword.replace("'", "''") + "'";
     }
 
     @Bean
