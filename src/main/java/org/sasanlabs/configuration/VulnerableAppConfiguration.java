@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
+import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
 import javax.sql.DataSource;
 import org.sasanlabs.internal.utility.LevelConstants;
@@ -46,6 +47,8 @@ public class VulnerableAppConfiguration {
     private static final String I18N_MESSAGE_FILE_LOCATION = "classpath:i18n/messages";
     private static final String ATTACK_VECTOR_PAYLOAD_PROPERTY_FILES_LOCATION_PATTERN =
             "classpath:/attackvectors/*.properties";
+    private static final Pattern APPLICATION_DB_PASSWORD_PATTERN =
+            Pattern.compile("[A-Za-z0-9_.\\-@#$%^&*+=:,~]{1,128}");
     private static final List<String> MAX_FILE_UPLOAD_SIZE_OVERRIDE_PATHS =
             Arrays.asList(
                     "/" + UnrestrictedFileUpload.CONTROLLER_PATH + "/" + LevelConstants.LEVEL_9);
@@ -131,6 +134,14 @@ public class VulnerableAppConfiguration {
             @Value("${spring.datasource.application.password}") String appPassword) {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
         JdbcTemplate adminJdbcTemplate = new JdbcTemplate(adminDataSource);
+        // DDL statements cannot use bound parameters, so the password is restricted to a strict
+        // allowlist of characters (no quotes, backslashes, whitespace or semicolons).
+        if (appPassword == null
+                || !APPLICATION_DB_PASSWORD_PATTERN.matcher(appPassword).matches()) {
+            throw new IllegalStateException(
+                    "spring.datasource.application.password must be 1-128 characters long and"
+                            + " contain only letters, digits and _ . - @ # $ % ^ & * + = : , ~");
+        }
         adminJdbcTemplate.execute(
                 String.format("CREATE USER application PASSWORD '%s'", appPassword));
         populator.addScript(new ClassPathResource("scripts/SQLInjection/db/schema.sql"));

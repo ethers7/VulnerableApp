@@ -1,6 +1,7 @@
 package org.sasanlabs.internal.utility;
 
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -12,6 +13,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.sasanlabs.internal.utility.exception.EncryptionException;
@@ -65,6 +67,10 @@ public class EncryptionUtils {
         return EncodingUtils.encodeBase64(reversed);
     }
 
+    private static final String AES_GCM_TRANSFORMATION = "AES/GCM/NoPadding";
+    private static final int GCM_IV_LENGTH_BYTES = 12;
+    private static final int GCM_TAG_LENGTH_BITS = 128;
+
     private static final byte[] salt = new byte[16];
 
     static {
@@ -82,22 +88,66 @@ public class EncryptionUtils {
         }
     }
 
+    /**
+     * Encrypts using AES-GCM with a fresh random IV per message. The returned value is the Base64
+     * encoding of {@code IV || ciphertext || authentication tag}.
+     */
     public static String encrypt(String plaintext, SecretKey key) throws EncryptionException {
         try {
-            // VULNERABILITY NOTE: ECB mode does not use an IV and reveals patterns (CWE-327)
-            Cipher cipher = Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(Cipher.ENCRYPT_MODE, key);
+            byte[] iv = new byte[GCM_IV_LENGTH_BYTES];
+            new SecureRandom().nextBytes(iv);
+
+            Cipher cipher = Cipher.getInstance(AES_GCM_TRANSFORMATION);
+            cipher.init(Cipher.ENCRYPT_MODE, key, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
 
             byte[] encrypted = cipher.doFinal(plaintext.getBytes(StandardCharsets.UTF_8));
-            return java.util.Base64.getEncoder().encodeToString(encrypted);
+            byte[] payload = new byte[iv.length + encrypted.length];
+            System.arraycopy(iv, 0, payload, 0, iv.length);
+            System.arraycopy(encrypted, 0, payload, iv.length, encrypted.length);
+            return java.util.Base64.getEncoder().encodeToString(payload);
 
         } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
             throw new EncryptionException("AES configuration not found ", e);
-        } catch (InvalidKeyException e) {
+        } catch (InvalidKeyException | InvalidAlgorithmParameterException e) {
             throw new EncryptionException("The provided key is invalid for AES encryption", e);
         } catch (IllegalBlockSizeException | BadPaddingException e) {
             throw new EncryptionException(
                     "AES encryption failed due to block size or padding issues", e);
+        }
+    }
+
+    /**
+     * Decrypts a value produced by {@link #encrypt(String, SecretKey)}.
+     *
+     * @throws EncryptionException if the input is malformed or the key/authentication tag does not
+     *     match
+     */
+    public static String decrypt(String ciphertext, SecretKey key) throws EncryptionException {
+        try {
+            byte[] payload = java.util.Base64.getDecoder().decode(ciphertext);
+            if (payload.length < GCM_IV_LENGTH_BYTES + GCM_TAG_LENGTH_BITS / 8) {
+                throw new EncryptionException("Ciphertext is too short");
+            }
+
+            Cipher cipher = Cipher.getInstance(AES_GCM_TRANSFORMATION);
+            cipher.init(
+                    Cipher.DECRYPT_MODE,
+                    key,
+                    new GCMParameterSpec(GCM_TAG_LENGTH_BITS, payload, 0, GCM_IV_LENGTH_BYTES));
+
+            byte[] decrypted =
+                    cipher.doFinal(
+                            payload, GCM_IV_LENGTH_BYTES, payload.length - GCM_IV_LENGTH_BYTES);
+            return new String(decrypted, StandardCharsets.UTF_8);
+
+        } catch (IllegalArgumentException e) {
+            throw new EncryptionException("Ciphertext is not valid Base64", e);
+        } catch (NoSuchPaddingException | NoSuchAlgorithmException e) {
+            throw new EncryptionException("AES configuration not found ", e);
+        } catch (InvalidKeyException | InvalidAlgorithmParameterException e) {
+            throw new EncryptionException("The provided key is invalid for AES decryption", e);
+        } catch (IllegalBlockSizeException | BadPaddingException e) {
+            throw new EncryptionException("AES decryption failed", e);
         }
     }
 }
