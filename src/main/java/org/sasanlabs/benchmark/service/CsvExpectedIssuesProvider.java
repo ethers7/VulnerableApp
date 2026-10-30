@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import org.apache.commons.csv.CSVRecord;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.sasanlabs.benchmark.model.ExpectedIssue;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
@@ -25,9 +27,9 @@ import org.springframework.stereotype.Component;
 /**
  * Loads SAST ground truth from a CSV file with header columns {@code CWE}, {@code Vulnerability
  * Type}, {@code File}, {@code Line}, {@code Number of Sources}. The default path points at {@code
- * scanner/sast/expectedIssues.csv} on the classpath; a filesystem path (relative to the working
- * directory, or absolute) is still accepted, and any path may be overridden via the {@code
- * benchmark.sast.ground-truth.path} property.
+ * scanner/sast/expectedIssues.csv} on the classpath; a filesystem path is still accepted but must
+ * resolve inside {@code benchmark.sast.ground-truth.base-dir} (the working directory when unset),
+ * and any path may be overridden via the {@code benchmark.sast.ground-truth.path} property.
  *
  * <p>Rows that fail to parse (missing columns, non-integer line / sources) are logged and skipped —
  * one bad row should not abort an entire benchmark run.
@@ -61,12 +63,21 @@ public class CsvExpectedIssuesProvider implements IExpectedIssuesProvider {
 
     private final String csvPath;
 
+    private final String baseDir;
+
     private volatile List<ExpectedIssue> cached;
 
+    public CsvExpectedIssuesProvider(String csvPath) {
+        this(csvPath, "");
+    }
+
+    @Autowired
     public CsvExpectedIssuesProvider(
             @Value("${benchmark.sast.ground-truth.path:classpath:scanner/sast/expectedIssues.csv}")
-                    String csvPath) {
+                    String csvPath,
+            @Value("${benchmark.sast.ground-truth.base-dir:}") String baseDir) {
         this.csvPath = csvPath;
+        this.baseDir = baseDir == null ? "" : baseDir.trim();
     }
 
     @PostConstruct
@@ -103,7 +114,31 @@ public class CsvExpectedIssuesProvider implements IExpectedIssuesProvider {
         if (csvPath.startsWith(CLASSPATH_PREFIX)) {
             return parseFromResource(csvPath.substring(CLASSPATH_PREFIX.length()));
         }
-        return parseFromPath(Paths.get(csvPath));
+        return parseFromPath(resolveConfinedPath());
+    }
+
+    /**
+     * Resolves {@link #csvPath} against the allowed base directory (the configured {@code
+     * benchmark.sast.ground-truth.base-dir}, or the working directory when blank) and rejects
+     * anything that escapes it, including via symlinks.
+     */
+    private Path resolveConfinedPath() throws IOException {
+        try {
+            Path base = Paths.get(baseDir.isEmpty() ? "." : baseDir).toAbsolutePath().normalize();
+            Path candidate = base.resolve(csvPath).normalize();
+            if (!candidate.startsWith(base)) {
+                throw new IOException(
+                        "SAST ground truth path is outside the allowed base directory");
+            }
+            Path real = candidate.toRealPath();
+            if (!real.startsWith(base.toRealPath())) {
+                throw new IOException(
+                        "SAST ground truth path is outside the allowed base directory");
+            }
+            return real;
+        } catch (InvalidPathException e) {
+            throw new IOException("SAST ground truth path is invalid", e);
+        }
     }
 
     private List<ExpectedIssue> parseFromResource(String location) throws IOException {
