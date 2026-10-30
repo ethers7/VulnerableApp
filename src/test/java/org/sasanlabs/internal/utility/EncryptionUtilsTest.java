@@ -49,41 +49,54 @@ class EncryptionUtilsTest {
     }
 
     @Test
-    @DisplayName("AES Encryption: Should produce consistent ciphertext (ECB Mode Property)")
-    void encrypt_EcbDeterminism() throws EncryptionException {
+    @DisplayName("AES Encryption: Should use a random IV so ciphertexts differ and round-trip")
+    void encrypt_GcmRandomIvRoundTrip() throws EncryptionException {
         SecretKey key = EncryptionUtils.getKeyFromPassword("fixed-password");
         String plaintext = "This is a secret message that is exactly 32 bytes";
 
         String ciphertext1 = EncryptionUtils.encrypt(plaintext, key);
         String ciphertext2 = EncryptionUtils.encrypt(plaintext, key);
 
-        // In ECB mode, the same plaintext with the same key always produces the same ciphertext
-        assertEquals(ciphertext1, ciphertext2);
-
-        // Verify it is valid Base64
+        assertNotEquals(ciphertext1, ciphertext2);
         assertDoesNotThrow(() -> Base64.getDecoder().decode(ciphertext1));
+        assertEquals(plaintext, EncryptionUtils.decrypt(ciphertext1, key));
+        assertEquals(plaintext, EncryptionUtils.decrypt(ciphertext2, key));
     }
 
     @Test
-    @DisplayName(
-            "AES Encryption: Identical blocks should produce identical ciphertext blocks (ECB Vulnerability)")
-    void encrypt_EcbPatternLeakage() throws EncryptionException {
+    @DisplayName("AES Encryption: Identical plaintext blocks must not yield identical blocks")
+    void encrypt_NoPatternLeakage() throws EncryptionException {
         SecretKey key = EncryptionUtils.getKeyFromPassword("vulnerability-test");
 
-        // Create two identical 16-byte blocks (AES block size)
+        // Two identical 16-byte blocks (AES block size)
         String block = "identical-block-"; // 16 characters
         String plaintext = block + block;
 
         String ciphertext = EncryptionUtils.encrypt(plaintext, key);
         byte[] decoded = Base64.getDecoder().decode(ciphertext);
 
-        // Split the ciphertext into two 16-byte segments
+        // Layout: 12-byte IV, then ciphertext blocks
         byte[] block1 = new byte[16];
         byte[] block2 = new byte[16];
-        System.arraycopy(decoded, 0, block1, 0, 16);
-        System.arraycopy(decoded, 16, block2, 0, 16);
+        System.arraycopy(decoded, 12, block1, 0, 16);
+        System.arraycopy(decoded, 28, block2, 0, 16);
 
-        // The core vulnerability of ECB: identical input blocks = identical output blocks
-        assertArrayEquals(block1, block2, "ECB mode failed to leak identical blocks");
+        assertFalse(java.util.Arrays.equals(block1, block2), "Identical blocks leaked");
+    }
+
+    @Test
+    @DisplayName("AES Encryption: Wrong key or tampered ciphertext must fail authentication")
+    void decrypt_WrongKeyOrTamperedFails() throws EncryptionException {
+        SecretKey key = EncryptionUtils.getKeyFromPassword("right-key");
+        SecretKey otherKey = EncryptionUtils.getKeyFromPassword("wrong-key");
+        String ciphertext = EncryptionUtils.encrypt("hello", key);
+
+        assertThrows(
+                EncryptionException.class, () -> EncryptionUtils.decrypt(ciphertext, otherKey));
+
+        byte[] decoded = Base64.getDecoder().decode(ciphertext);
+        decoded[decoded.length - 1] ^= 0x01;
+        String tampered = Base64.getEncoder().encodeToString(decoded);
+        assertThrows(EncryptionException.class, () -> EncryptionUtils.decrypt(tampered, key));
     }
 }

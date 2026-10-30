@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
@@ -31,12 +32,22 @@ public class BenchmarkResultWriter {
     }
 
     public Path write(BenchmarkResult result) throws IOException {
-        return write(result, defaultBenchmarksDir);
+        return write(result, "");
     }
 
-    public Path write(BenchmarkResult result, String benchmarksDir) throws IOException {
-        Path dir = Paths.get(benchmarksDir);
+    /**
+     * Writes the result under the configured benchmarks directory. {@code subDirectory} is resolved
+     * relative to that root and must stay inside it; absolute paths and {@code ..} escapes are
+     * rejected with an {@link IllegalArgumentException}.
+     */
+    public Path write(BenchmarkResult result, String subDirectory) throws IOException {
+        Path root = Paths.get(defaultBenchmarksDir).toAbsolutePath().normalize();
+        Path dir = resolveConfined(root, subDirectory);
         Files.createDirectories(dir);
+        // Re-verify containment after symlinks are resolved.
+        if (!dir.toRealPath().startsWith(root.toRealPath())) {
+            throw new IllegalArgumentException("Benchmark directory escapes the benchmarks root");
+        }
         String fileName = sanitizeToolName(result.getTool()) + "-results.json";
         Path target = dir.resolve(fileName);
         Path temp = Files.createTempFile(dir, fileName + ".", ".tmp");
@@ -48,6 +59,22 @@ public class BenchmarkResultWriter {
             throw ioe;
         }
         return target;
+    }
+
+    private static Path resolveConfined(Path root, String subDirectory) {
+        if (subDirectory == null || subDirectory.isEmpty()) {
+            return root;
+        }
+        try {
+            Path candidate = root.resolve(subDirectory).normalize();
+            if (!candidate.startsWith(root)) {
+                throw new IllegalArgumentException(
+                        "Benchmark directory escapes the benchmarks root");
+            }
+            return candidate;
+        } catch (InvalidPathException e) {
+            throw new IllegalArgumentException("Invalid benchmark directory", e);
+        }
     }
 
     private static void moveAtomicallyOrReplace(Path source, Path target) throws IOException {

@@ -1,6 +1,7 @@
 package org.sasanlabs.benchmark.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
@@ -22,7 +23,7 @@ class BenchmarkResultWriterTest {
 
         Path target = writer.write(sampleResult("ZAP"));
 
-        assertThat(target).isEqualTo(tempDir.resolve("zap-results.json"));
+        assertThat(target).isEqualTo(tempDir.toAbsolutePath().resolve("zap-results.json"));
         assertThat(Files.exists(target)).isTrue();
 
         BenchmarkResult roundTripped = MAPPER.readValue(target.toFile(), BenchmarkResult.class);
@@ -61,20 +62,35 @@ class BenchmarkResultWriterTest {
         Path target = writer.write(sampleResult("ZAP"));
 
         assertThat(Files.isDirectory(nested)).isTrue();
-        assertThat(target).isEqualTo(nested.resolve("zap-results.json"));
+        assertThat(target).isEqualTo(nested.toAbsolutePath().resolve("zap-results.json"));
     }
 
     @Test
     void write_withCustomDir_overridesDefault(@TempDir Path tempDir) throws Exception {
-        Path defaultDir = tempDir.resolve("default");
-        Path overrideDir = tempDir.resolve("override");
-        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, defaultDir.toString());
+        Path root = tempDir.resolve("root");
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, root.toString());
 
-        Path target = writer.write(sampleResult("ZAP"), overrideDir.toString());
+        Path target = writer.write(sampleResult("ZAP"), "override");
 
-        assertThat(target).isEqualTo(overrideDir.resolve("zap-results.json"));
+        assertThat(target).isEqualTo(root.toAbsolutePath().resolve("override/zap-results.json"));
         assertThat(Files.exists(target)).isTrue();
-        assertThat(Files.exists(defaultDir)).isFalse();
+        assertThat(Files.exists(root.resolve("zap-results.json"))).isFalse();
+    }
+
+    @Test
+    void write_withDirOutsideRoot_isRejected(@TempDir Path tempDir) throws Exception {
+        Path root = tempDir.resolve("root");
+        BenchmarkResultWriter writer = new BenchmarkResultWriter(MAPPER, root.toString());
+
+        assertThatThrownBy(() -> writer.write(sampleResult("ZAP"), "../escape"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(
+                        () ->
+                                writer.write(
+                                        sampleResult("ZAP"), tempDir.resolve("abs").toString()))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(Files.exists(tempDir.resolve("escape"))).isFalse();
+        assertThat(Files.exists(tempDir.resolve("abs"))).isFalse();
     }
 
     @Test
