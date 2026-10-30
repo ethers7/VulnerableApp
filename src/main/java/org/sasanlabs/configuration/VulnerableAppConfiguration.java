@@ -131,8 +131,11 @@ public class VulnerableAppConfiguration {
             @Value("${spring.datasource.application.password}") String appPassword) {
         ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
         JdbcTemplate adminJdbcTemplate = new JdbcTemplate(adminDataSource);
+        // DDL statements cannot use bind parameters, so the configured password is emitted as a
+        // properly escaped SQL string literal (single quotes doubled) after rejecting characters
+        // that cannot be part of a literal.
         adminJdbcTemplate.execute(
-                String.format("CREATE USER application PASSWORD '%s'", appPassword));
+                "CREATE USER application PASSWORD " + toSqlStringLiteral(appPassword));
         populator.addScript(new ClassPathResource("scripts/SQLInjection/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/xss/PersistentXSS/db/schema.sql"));
         populator.addScript(new ClassPathResource("scripts/XXEVulnerability/schema.sql"));
@@ -151,6 +154,13 @@ public class VulnerableAppConfiguration {
         initializer.setDataSource(adminDataSource);
         initializer.setDatabasePopulator(populator);
         return initializer;
+    }
+
+    private static String toSqlStringLiteral(String value) {
+        if (value == null || value.indexOf('\0') >= 0) {
+            throw new IllegalArgumentException("Invalid application datasource password");
+        }
+        return "'" + value.replace("'", "''") + "'";
     }
 
     @Bean
